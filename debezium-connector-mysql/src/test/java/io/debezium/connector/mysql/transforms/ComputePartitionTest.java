@@ -1,7 +1,18 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.mysql.transforms;
 
+import static io.debezium.data.Envelope.Operation.CREATE;
+import static io.debezium.data.Envelope.Operation.DELETE;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import io.debezium.data.Envelope;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -9,15 +20,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import io.debezium.data.Envelope;
 
-import static io.debezium.data.Envelope.Operation.CREATE;
-import static io.debezium.data.Envelope.Operation.DELETE;
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class ComputePartitionTest  {
+public class ComputePartitionTest {
 
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("mysql-server-1.inventory.product.Value")
@@ -28,12 +33,10 @@ public class ComputePartitionTest  {
 
     private final ComputePartition<SourceRecord> computePartitionTransformation = new ComputePartition<>();
 
-
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnCreateAndUpdateEvents() {
 
         configureTransformation("product", 2);
-
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -58,7 +61,6 @@ public class ComputePartitionTest  {
     public void rowWithSameConfiguredFieldValueWillHaveTheSamePartition() {
 
         configureTransformation("product", 2);
-
 
         final SourceRecord eventRecord1 = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -110,7 +112,7 @@ public class ComputePartitionTest  {
                 .build();
 
         Struct payload = createEnvelope.create(row, null, Instant.now());
-        if(operation.equals(Envelope.Operation.DELETE)) {
+        if (operation.equals(Envelope.Operation.DELETE)) {
             payload = createEnvelope.delete(row, null, Instant.now());
         }
         return new SourceRecord(
