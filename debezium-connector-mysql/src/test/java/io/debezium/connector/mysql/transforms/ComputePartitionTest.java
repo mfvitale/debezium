@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.connector.mysql.transforms.partitions.ComputePartition;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -30,15 +31,18 @@ public class ComputePartitionTest {
             .field("price", Schema.FLOAT32_SCHEMA)
             .field("product", Schema.STRING_SCHEMA)
             .build();
+    public static final Schema SOURCE_SCHEMA = SchemaBuilder.struct()
+            .name("source")
+            .field("table", Schema.STRING_SCHEMA).build();
 
     private final ComputePartition<SourceRecord> computePartitionTransformation = new ComputePartition<>();
 
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnCreateAndUpdateEvents() {
 
-        configureTransformation("product", 2);
+        configureTransformation("products", "products:product", "products:2");
 
-        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
 
@@ -48,9 +52,9 @@ public class ComputePartitionTest {
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnDeleteEvents() {
 
-        configureTransformation("product", 2);
+        configureTransformation("products", "products:product", "products:2");
 
-        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), DELETE);
+        final SourceRecord eventRecord = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), DELETE);
 
         SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
 
@@ -60,13 +64,13 @@ public class ComputePartitionTest {
     @Test
     public void rowWithSameConfiguredFieldValueWillHaveTheSamePartition() {
 
-        configureTransformation("product", 2);
+        configureTransformation("products", "products:product", "products:2");
 
-        final SourceRecord eventRecord1 = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord1 = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
-        final SourceRecord eventRecord2 = buildSourceRecord(productRow(2L, 2.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord2 = buildSourceRecord("products", productRow(2L, 2.0F, "APPLE"), CREATE);
 
         SourceRecord transformed2 = computePartitionTransformation.apply(eventRecord2);
 
@@ -77,13 +81,13 @@ public class ComputePartitionTest {
     @Test
     public void rowWithDifferentConfiguredFieldValueWillHaveDifferentPartition() {
 
-        configureTransformation("product", 2);
+        configureTransformation("products", "products:product", "products:2");
 
-        final SourceRecord eventRecord1 = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord1 = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
-        final SourceRecord eventRecord2 = buildSourceRecord(productRow(3L, 0.95F, "BANANA"), CREATE);
+        final SourceRecord eventRecord2 = buildSourceRecord("products", productRow(3L, 0.95F, "BANANA"), CREATE);
 
         SourceRecord transformed2 = computePartitionTransformation.apply(eventRecord2);
 
@@ -91,29 +95,56 @@ public class ComputePartitionTest {
     }
 
     @Test
-    public void defaultPartitionNumberWillSkipTransformation() {
+    public void notConfiguredTableRecordsWillBeSkipped() {
 
-        configureTransformation("product", 1);
+        configureTransformation("orders", "orders:purchaser", "purchaser:2");
 
-        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord1 = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
-        SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
+        SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
-        assertThat(transformed.kafkaPartition()).isNull();
+        assertThat(transformed1.kafkaPartition()).isEqualTo(eventRecord1.kafkaPartition());
+    }
+
+    @Test
+    public void notConfiguredTableFieldMappingRecordsWillBeSkipped() {
+
+        configureTransformation("orders,products", "orders:purchaser", "purchaser:2");
+
+        final SourceRecord eventRecord1 = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
+
+        assertThat(transformed1.kafkaPartition()).isEqualTo(eventRecord1.kafkaPartition());
+    }
+
+    @Test
+    public void notConfiguredTablePartitionNumMappingRecordsWillBeSkipped() {
+
+        configureTransformation("orders,products", "orders:purchaser,products:product", "purchaser:2");
+
+        final SourceRecord eventRecord1 = buildSourceRecord("products", productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
+
+        assertThat(transformed1.kafkaPartition()).isEqualTo(eventRecord1.kafkaPartition());
     }
 
     @NotNull
-    private SourceRecord buildSourceRecord(Struct row, Envelope.Operation operation) {
+    private SourceRecord buildSourceRecord(String tableName, Struct row, Envelope.Operation operation) {
 
         Envelope createEnvelope = Envelope.defineSchema()
                 .withName("mysql-server-1.inventory.product.Envelope")
                 .withRecord(VALUE_SCHEMA)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(SOURCE_SCHEMA)
                 .build();
 
-        Struct payload = createEnvelope.create(row, null, Instant.now());
+        Struct source =  new Struct(SOURCE_SCHEMA);
+        source.put("table", tableName);
+
+        Struct payload = createEnvelope.create(row, source, Instant.now());
         if (operation.equals(Envelope.Operation.DELETE)) {
-            payload = createEnvelope.delete(row, null, Instant.now());
+            payload = createEnvelope.delete(row, source, Instant.now());
         }
         return new SourceRecord(
                 new HashMap<>(),
@@ -122,10 +153,11 @@ public class ComputePartitionTest {
                 createEnvelope.schema(), payload);
     }
 
-    private void configureTransformation(String fieldName, int partitions) {
+    private void configureTransformation(String tables, String tableFieldMapping, String tablePartitionNumMapping) {
         computePartitionTransformation.configure(Map.of(
-                "partition.field.name", fieldName,
-                "partition.num", partitions));
+                "partition.table.list", tables,
+                "partition.table.field.mappings", tableFieldMapping,
+                "partition.table.partition.num.mappings", tablePartitionNumMapping));
     }
 
     private Struct productRow(long id, float price, String name) {
