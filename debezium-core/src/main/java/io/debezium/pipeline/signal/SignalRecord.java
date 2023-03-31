@@ -1,0 +1,50 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.pipeline.signal;
+
+import io.debezium.config.CommonConnectorConfig;
+import org.apache.kafka.connect.data.Struct;
+
+import java.util.Optional;
+
+/**
+ * The class represent the signal sent on a channel:
+ * <ul>
+ * <li>{@code id STRING} - the unique identifier of the signal sent, usually UUID, can be used for deduplication</li>
+ * <li>{@code type STRING} - the unique logical name of the code executing the signal</li>
+ * <li>{@code data STRING} - the data in JSON format that are passed to the signal code
+ * </ul>
+ */
+class SignalRecord {
+    private final String id;
+    private final String type;
+    private final String data;
+
+    public SignalRecord(String id, String type, String data) {
+        this.id = id;
+        this.type = type;
+        this.data = data;
+    }
+
+    static Optional<SignalRecord> buildSignalRecord(Struct value, CommonConnectorConfig config) {
+
+        final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
+
+        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2]));
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getData() {
+        return data;
+    }
+}

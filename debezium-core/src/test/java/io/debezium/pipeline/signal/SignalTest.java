@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.debezium.pipeline.signal.actions.Log;
+import io.debezium.pipeline.signal.actions.SignalAction;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -39,7 +41,7 @@ public class SignalTest {
     @Test
     public void shouldExecuteLog() throws Exception {
         final Signal<TestPartition> signal = new Signal<>(config());
-        final LogInterceptor log = new LogInterceptor(io.debezium.pipeline.signal.Log.class);
+        final LogInterceptor log = new LogInterceptor(Log.class);
         assertThat(signal.process(new TestPartition(), "log1", "log", "{\"message\": \"signallog {}\"}")).isTrue();
         assertThat(log.containsMessage("signallog <none>")).isTrue();
     }
@@ -61,7 +63,7 @@ public class SignalTest {
         final Signal<TestPartition> signal = new Signal<>(config());
 
         final AtomicInteger called = new AtomicInteger();
-        final Signal.Action<TestPartition> testAction = signalPayload -> {
+        final SignalAction<TestPartition> testAction = signalPayload -> {
             called.set(signalPayload.data.getInteger("v"));
             return true;
         };
@@ -88,7 +90,7 @@ public class SignalTest {
         record.put("col2", "custom");
         record.put("col3", "{\"v\": 5}");
         final AtomicInteger called = new AtomicInteger();
-        final Signal.Action<TestPartition> testAction = signalPayload -> {
+        final SignalAction<TestPartition> testAction = signalPayload -> {
             called.set(signalPayload.data.getInteger("v"));
             return true;
         };
@@ -113,7 +115,7 @@ public class SignalTest {
         record.put("col1", "log1");
         record.put("col2", "custom");
         final AtomicInteger called = new AtomicInteger();
-        final Signal.Action<TestPartition> testAction = signalPayload -> {
+        final SignalAction<TestPartition> testAction = signalPayload -> {
             called.set(signalPayload.data.getInteger("v"));
             return true;
         };

@@ -5,14 +5,14 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import io.debezium.pipeline.signal.actions.SignalAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.signal.Signal.Payload;
 import io.debezium.pipeline.spi.Partition;
 
-public class OpenIncrementalSnapshotWindow<P extends Partition> implements Signal.Action<P> {
+public class OpenIncrementalSnapshotWindow<P extends Partition> implements SignalAction<P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenIncrementalSnapshotWindow.class);
 

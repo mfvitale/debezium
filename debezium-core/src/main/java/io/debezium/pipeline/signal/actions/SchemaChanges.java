@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.signal;
+package io.debezium.pipeline.signal.actions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +20,7 @@ import io.debezium.relational.history.TableChanges.TableChangeType;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 
-public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
+public class SchemaChanges<P extends Partition> implements SignalAction<P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaChanges.class);
 

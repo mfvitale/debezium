@@ -45,7 +45,7 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.StopSnapshot;
+import io.debezium.pipeline.signal.actions.StopSnapshot;
 
 /**
  * Test to verify incremental snapshotting for MongoDB.

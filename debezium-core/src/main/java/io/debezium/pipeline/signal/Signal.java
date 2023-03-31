@@ -10,6 +10,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.pipeline.signal.actions.ExecuteSnapshot;
+import io.debezium.pipeline.signal.actions.Log;
+import io.debezium.pipeline.signal.actions.PauseIncrementalSnapshot;
+import io.debezium.pipeline.signal.actions.ResumeIncrementalSnapshot;
+import io.debezium.pipeline.signal.actions.SchemaChanges;
+import io.debezium.pipeline.signal.actions.SignalAction;
+import io.debezium.pipeline.signal.actions.StopSnapshot;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,16 +50,6 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 @NotThreadSafe
 public class Signal<P extends Partition> {
-
-    @FunctionalInterface
-    public interface Action<P extends Partition> {
-
-        /**
-         * @param signalPayload the content of the signal
-         * @return true if the signal was processed
-         */
-        boolean arrived(Payload<P> signalPayload) throws InterruptedException;
-    }
 
     public static class Payload<P extends Partition> {
         public final String id;
@@ -91,7 +88,7 @@ public class Signal<P extends Partition> {
 
     private final CommonConnectorConfig connectorConfig;
 
-    private final Map<String, Action<P>> signalActions = new HashMap<>();
+    private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
 
     public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<P, ? extends DataCollectionId> eventDispatcher) {
         this.connectorConfig = connectorConfig;
@@ -120,31 +117,34 @@ public class Signal<P extends Partition> {
         return connectorConfig.isSignalDataCollection(dataCollectionId);
     }
 
-    public void registerSignalAction(String id, Action<P> signal) {
+    public void registerSignalAction(String id, SignalAction<P> signal) {
         LOGGER.debug("Registering signal '{}' using class '{}'", id, signal.getClass().getName());
         signalActions.put(id, signal);
     }
 
-    public boolean process(P partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
-        LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", id, type, data);
-        final Action<P> action = signalActions.get(type);
+    public class SignalProcessor {
+
+    }
+    public boolean process(P partition, SignalRecord signalRecord, OffsetContext offset, Struct source) throws InterruptedException {
+        LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", signalRecord.getId(), signalRecord.getType(), signalRecord.getData());
+        final SignalAction<P> action = signalActions.get(signalRecord.getType());
         if (action == null) {
-            LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", id, type);
+            LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", signalRecord.getId(), signalRecord.getType());
             return false;
         }
         try {
-            final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
-                    : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload<>(partition, id, type, jsonData, offset, source));
+            final Document jsonData = (signalRecord.getData() == null || signalRecord.getData().isEmpty()) ? Document.create()
+                    : DocumentReader.defaultReader().read(signalRecord.getData());
+            return action.arrived(new Payload<>(partition, signalRecord.getId(), signalRecord.getType(), jsonData, offset, source));
         }
         catch (IOException e) {
-            LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", id, data, e);
+            LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
             return false;
         }
     }
 
     public boolean process(P partition, String id, String type, String data) throws InterruptedException {
-        return process(partition, id, type, data, null, null);
+        return process(partition, new SignalRecord(id, type, data), null, null);
     }
 
     /**
@@ -154,25 +154,23 @@ public class Signal<P extends Partition> {
      * @return true if the signal was processed
      */
     public boolean process(P partition, Struct value, OffsetContext offset) throws InterruptedException {
-        String id = null;
-        String type = null;
-        String data = null;
-        Struct source = null;
+
         try {
-            final Optional<String[]> parseSignal = connectorConfig.parseSignallingMessage(value);
+            Optional<SignalRecord> result = SignalRecord.buildSignalRecord(value, connectorConfig);
+            if (result.isEmpty()) {
+                return false;
+            }
+            Struct source = null;
             if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
                 source = value.getStruct(Envelope.FieldName.SOURCE);
             }
-            if (!parseSignal.isPresent()) {
-                return false;
-            }
-            id = parseSignal.get()[0];
-            type = parseSignal.get()[1];
-            data = parseSignal.get()[2];
-        }
-        catch (Exception e) {
+
+            final SignalRecord signalRecord = result.get();
+            return process(partition, signalRecord, offset, source);
+
+        } catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
+            return false;
         }
-        return process(partition, id, type, data, offset, source);
     }
 }
