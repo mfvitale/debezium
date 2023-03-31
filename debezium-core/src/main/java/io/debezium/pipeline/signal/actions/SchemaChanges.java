@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
@@ -42,7 +42,7 @@ public class SchemaChanges<P extends Partition> implements SignalAction<P> {
     }
 
     @Override
-    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         final Array changes = signalPayload.data.getArray(FIELD_CHANGES);
         final String database = signalPayload.data.getString(FIELD_DATABASE);
         final String schema = signalPayload.data.getString(FIELD_SCHEMA);

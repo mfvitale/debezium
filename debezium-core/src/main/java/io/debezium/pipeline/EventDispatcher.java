@@ -27,7 +27,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.signal.DatabaseSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -81,7 +81,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final ConnectTableChangeSerializer tableChangesSerializer;
-    private final Signal<P> signal;
+    private final DatabaseSignalChannel databaseSignalChannel;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
     /**
@@ -124,7 +124,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
-        this.signal = new Signal<>(connectorConfig, this);
+        this.databaseSignalChannel = new DatabaseSignalChannel();
         this.heartbeat = heartbeat;
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
@@ -150,7 +150,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
         this.transactionMonitor = transactionMonitor;
-        this.signal = new Signal<>(connectorConfig, this);
+        this.databaseSignalChannel = new DatabaseSignalChannel();
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
@@ -232,8 +232,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
-                        if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
-                            signal.process(partition, value, offset);
+                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId)) {
+                            databaseSignalChannel.process(value, connectorConfig);
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {

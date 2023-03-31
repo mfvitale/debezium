@@ -8,7 +8,7 @@ package io.debezium.pipeline.signal.actions;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.signal.SignalPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
     }
 
     @Override
-    public boolean arrived(Signal.Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         final List<String> dataCollections = getDataCollections(signalPayload.data);
         final SnapshotType type = getSnapshotType(signalPayload.data);
 

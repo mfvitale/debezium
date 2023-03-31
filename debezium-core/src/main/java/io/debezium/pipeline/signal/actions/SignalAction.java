@@ -5,7 +5,7 @@
  */
 package io.debezium.pipeline.signal.actions;
 
-import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 
 @FunctionalInterface
@@ -15,5 +15,5 @@ public interface SignalAction<P extends Partition> {
      * @param signalPayload the content of the signal
      * @return true if the signal was processed
      */
-    boolean arrived(Signal.Payload<P> signalPayload) throws InterruptedException;
+    boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException;
 }

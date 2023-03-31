@@ -6,7 +6,7 @@
 package io.debezium.pipeline.signal.actions;
 
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -21,7 +21,7 @@ public class PauseIncrementalSnapshot<P extends Partition> extends AbstractSnaps
     }
 
     @Override
-    public boolean arrived(Signal.Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         dispatcher.getIncrementalSnapshotChangeEventSource().pauseSnapshot(signalPayload.partition, signalPayload.offsetContext);
         return true;
     }

@@ -1,0 +1,82 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.pipeline.signal;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import io.debezium.config.CommonConnectorConfig;
+import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.document.Document;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
+
+/**
+ * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.
+ * The processor supports a common set of signals that it can process and every connector can register its own
+ * additional signals.
+ * The signalling table must conform to the structure
+ * <ul>
+ * <li>{@code id STRING} - the unique identifier of the signal sent, usually UUID, can be used for deduplication</li>
+ * <li>{@code type STRING} - the unique logical name of the code executing the signal</li>
+ * <li>{@code data STRING} - the data in JSON format that are passed to the signal code
+ * </ul>
+ *
+ * @author Jiri Pechanec
+ *
+ */
+@NotThreadSafe
+public class DatabaseSignalChannel implements SignalChannelReader {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseSignalChannel.class);
+    public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
+
+    @Override
+    public List<SignalRecord> read() {
+
+        SignalRecord signalRecord = SIGNALS.poll();
+        if (signalRecord == null) {
+            return List.of();
+        }
+
+        return List.of(signalRecord);
+    }
+
+    /**
+     *
+     * @param value Envelope with change from signaling table
+     * @param offset offset of the incoming signal
+     * @return true if the signal was processed
+     */
+    public boolean process(Struct value, CommonConnectorConfig connectorConfig) throws InterruptedException {
+
+        try {
+            Optional<SignalRecord> result = SignalRecord.buildSignalRecord(value, connectorConfig);
+            if (result.isEmpty()) {
+                return false;
+            }
+            /* TODO I think can be removed
+            Struct source = null;
+            if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
+                source = value.getStruct(Envelope.FieldName.SOURCE);
+            }*/
+
+            final SignalRecord signalRecord = result.get();
+            SIGNALS.add(signalRecord);
+            return true;
+
+        } catch (Exception e) {
+            LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
+            return false;
+        }
+    }
+}

@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -28,7 +28,7 @@ public class CloseIncrementalSnapshotWindow<P extends Partition> implements Sign
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
-    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.partition, signalPayload.id,
                 signalPayload.offsetContext);
         return true;

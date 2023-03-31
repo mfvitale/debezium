@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
@@ -41,7 +41,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     }
 
     @Override
-    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         final List<String> dataCollections = getDataCollections(signalPayload.data);
         if (dataCollections == null) {
             return false;
