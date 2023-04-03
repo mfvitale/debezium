@@ -5,10 +5,11 @@
  */
 package io.debezium.pipeline.signal;
 
-import io.debezium.config.CommonConnectorConfig;
+import java.util.Optional;
+
 import org.apache.kafka.connect.data.Struct;
 
-import java.util.Optional;
+import io.debezium.config.CommonConnectorConfig;
 
 /**
  * The class represent the signal sent on a channel:
@@ -17,8 +18,10 @@ import java.util.Optional;
  * <li>{@code type STRING} - the unique logical name of the code executing the signal</li>
  * <li>{@code data STRING} - the data in JSON format that are passed to the signal code
  * </ul>
+ *
+ * @author Mario Fiore Vitale
  */
-class SignalRecord {
+public class SignalRecord {
     private final String id;
     private final String type;
     private final String data;

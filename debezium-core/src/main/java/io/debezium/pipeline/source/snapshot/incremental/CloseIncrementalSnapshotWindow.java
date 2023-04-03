@@ -5,12 +5,12 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
-import io.debezium.pipeline.signal.actions.SignalAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.SignalAction;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 

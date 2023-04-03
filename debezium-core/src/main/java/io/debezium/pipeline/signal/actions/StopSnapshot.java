@@ -8,13 +8,13 @@ package io.debezium.pipeline.signal.actions;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import io.debezium.pipeline.signal.SignalPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 

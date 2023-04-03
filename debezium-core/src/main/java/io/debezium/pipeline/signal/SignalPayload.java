@@ -5,18 +5,19 @@
  */
 package io.debezium.pipeline.signal;
 
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.document.Document;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import org.apache.kafka.connect.data.Struct;
 
 public class SignalPayload<P extends Partition> {
     public final String id;
     public final String type;
     public final Document data;
-    public final P partition; //TODO this make sense only for snapshotting actions. This really confuse me
-    public final OffsetContext offsetContext; //TODO this make sense only for snapshotting actions
-    public final Struct source; //TODO I think this is not useful in the signal flow. Since this should be the source of the signal event only in case of database signal
+    public final P partition; // TODO this make sense only for snapshotting actions. This really confuse me
+    public final OffsetContext offsetContext; // TODO this make sense only for snapshotting actions
+    public final Struct source; // TODO I think this is not useful in the signal flow. Since this should be the source of the signal event only in case of database signal
 
     /**
      * @param partition partition from which the signal was sent

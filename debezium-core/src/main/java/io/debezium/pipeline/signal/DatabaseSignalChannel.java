@@ -10,15 +10,12 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import io.debezium.config.CommonConnectorConfig;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.document.Document;
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
+import io.debezium.config.CommonConnectorConfig;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.
@@ -41,6 +38,15 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
 
     @Override
+    public String name() {
+        return "database";
+    }
+
+    @Override
+    public void init() {
+    }
+
+    @Override
     public List<SignalRecord> read() {
 
         SignalRecord signalRecord = SIGNALS.poll();
@@ -51,10 +57,14 @@ public class DatabaseSignalChannel implements SignalChannelReader {
         return List.of(signalRecord);
     }
 
+    @Override
+    public void close() {
+    }
+
     /**
      *
      * @param value Envelope with change from signaling table
-     * @param offset offset of the incoming signal
+     * @param connectorConfig Configurations coming from connector
      * @return true if the signal was processed
      */
     public boolean process(Struct value, CommonConnectorConfig connectorConfig) throws InterruptedException {
@@ -64,17 +74,20 @@ public class DatabaseSignalChannel implements SignalChannelReader {
             if (result.isEmpty()) {
                 return false;
             }
-            /* TODO I think can be removed
-            Struct source = null;
-            if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
-                source = value.getStruct(Envelope.FieldName.SOURCE);
-            }*/
+            /*
+             * TODO I think can be removed
+             * Struct source = null;
+             * if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
+             * source = value.getStruct(Envelope.FieldName.SOURCE);
+             * }
+             */
 
             final SignalRecord signalRecord = result.get();
             SIGNALS.add(signalRecord);
             return true;
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
             return false;
         }

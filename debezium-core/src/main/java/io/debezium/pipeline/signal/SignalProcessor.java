@@ -5,6 +5,19 @@
  */
 package io.debezium.pipeline.signal;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+
+import org.apache.kafka.connect.source.SourceConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -22,30 +35,39 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Threads;
-import org.apache.kafka.connect.source.SourceConnector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
+/**
+ * This class permits to process signals coming from the different channels.
+ *
+ * @author Mario Fiore Vitale
+ */
 public class SignalProcessor<P extends Partition> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
+
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
+
     private final CommonConnectorConfig connectorConfig;
-    private final ServiceLoader<SignalChannelReader> signalChannelReaders = ServiceLoader.load(SignalChannelReader.class);
+
+    private final List<SignalChannelReader> signalChannelReaders;
 
     private final ScheduledExecutorService signalProcessorExecutor;
 
-    public SignalProcessor(Class<? extends SourceConnector> connector, CommonConnectorConfig config, EventDispatcher<P, ? extends DataCollectionId> eventDispatcher) {
+    private final DocumentReader documentReader;
 
-        connectorConfig = config;
-        signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector , config.getLogicalName(), SignalProcessor.class.getName(), false);
+    public SignalProcessor(Class<? extends SourceConnector> connector,
+                           CommonConnectorConfig config,
+                           EventDispatcher<P, ? extends DataCollectionId> eventDispatcher,
+                           List<SignalChannelReader> signalChannelReaders, DocumentReader documentReader) {
+
+        this.connectorConfig = config;
+        this.signalChannelReaders = signalChannelReaders;
+        this.documentReader = documentReader;
+        this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getName(), false);
+
+        signalChannelReaders.stream()
+                .filter(isEnabled())
+                .forEach(SignalChannelReader::read);
 
         registerSignalAction(Log.NAME, new Log<>());
         if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {
@@ -64,9 +86,18 @@ public class SignalProcessor<P extends Partition> {
         registerSignalAction(ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(eventDispatcher));
     }
 
+    private Predicate<SignalChannelReader> isEnabled() {
+        return reader -> connectorConfig.getEnabledChannels().contains(reader.name());
+    }
+
     public void start() {
 
-        signalProcessorExecutor.schedule(this::process, 30, TimeUnit.SECONDS);
+        signalProcessorExecutor.schedule(this::process, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    public void stop() {
+
+        signalProcessorExecutor.shutdown();
     }
 
     public void registerSignalAction(String id, SignalAction<P> signal) {
@@ -77,34 +108,31 @@ public class SignalProcessor<P extends Partition> {
 
     private void process() {
 
-        try {
-            for (SignalChannelReader signalChannelReader : signalChannelReaders) { //TODO filter only active reader
-                for (SignalRecord signalRecord : signalChannelReader.read()) {
-                    processSignal(signalRecord);
-                }
-            }
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e); //TODO manage it
-        }
+        signalChannelReaders.parallelStream()
+                .filter(isEnabled())
+                .map(SignalChannelReader::read)
+                .flatMap(Collection::stream)
+                .forEach(this::processSignal);
     }
 
-    private boolean processSignal(SignalRecord signalRecord) throws InterruptedException {
+    private void processSignal(SignalRecord signalRecord) {
 
         LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", signalRecord.getId(), signalRecord.getType(), signalRecord.getData());
         final SignalAction<P> action = signalActions.get(signalRecord.getType());
         if (action == null) {
             LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", signalRecord.getId(), signalRecord.getType());
-
+            return;
         }
         try {
             final Document jsonData = (signalRecord.getData() == null || signalRecord.getData().isEmpty()) ? Document.create()
-                    : DocumentReader.defaultReader().read(signalRecord.getData());
-            return action.arrived(new SignalPayload<>(null, signalRecord.getId(), signalRecord.getType(), jsonData, null, null));
+                    : documentReader.read(signalRecord.getData());
+            action.arrived(new SignalPayload<>(null, signalRecord.getId(), signalRecord.getType(), jsonData, null, null));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
         }
-        return false;
+        catch (InterruptedException e) {
+            LOGGER.warn("Action {} has been interrupted. The signal {} may not have been processed.", signalRecord.getType(), signalRecord);
+        }
     }
 }
