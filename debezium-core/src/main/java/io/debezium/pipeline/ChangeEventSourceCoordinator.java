@@ -226,6 +226,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             }
 
+            signalProcessor.stop();
             eventDispatcher.close();
         }
         finally {

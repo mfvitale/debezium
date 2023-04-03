@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -741,9 +742,19 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
-        this.signalEnabledChannels = config.getList(SIGNAL_ENABLED_CHANNELS);
+        this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(TASK_ID);
+    }
+
+    private static List<String> getSignalEnabledChannels(Configuration config) {
+
+       if(config.hasKey(SIGNAL_ENABLED_CHANNELS)) {
+           return config.getList(SIGNAL_ENABLED_CHANNELS);
+       }
+       return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 
     private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {

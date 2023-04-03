@@ -50,6 +50,8 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     @Override
     public List<SignalRecord> read() {
 
+        LOGGER.trace("Reading signaling events from queue");
+
         SignalRecord signalRecord = SIGNALS.poll();
         if (signalRecord == null) {
             return List.of();
@@ -70,6 +72,7 @@ public class DatabaseSignalChannel implements SignalChannelReader {
      */
     public boolean process(Struct value, CommonConnectorConfig connectorConfig) throws InterruptedException {
 
+        LOGGER.trace("Received event from signaling table. Enqueue for process");
         try {
             Optional<SignalRecord> result = SignalRecord.buildSignalRecord(value, connectorConfig);
             if (result.isEmpty()) {

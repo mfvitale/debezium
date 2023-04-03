@@ -6,6 +6,7 @@
 package io.debezium.pipeline.signal;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +47,11 @@ public class SignalProcessor<P extends Partition> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
 
+    /**
+     * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
+     */
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
 
     private final CommonConnectorConfig connectorConfig;
@@ -68,7 +74,7 @@ public class SignalProcessor<P extends Partition> {
 
         signalChannelReaders.stream()
                 .filter(isEnabled())
-                .forEach(SignalChannelReader::read);
+                .forEach(SignalChannelReader::init);
 
         registerSignalAction(Log.NAME, new Log<>());
         if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {
@@ -93,12 +99,25 @@ public class SignalProcessor<P extends Partition> {
 
     public void start() {
 
-        signalProcessorExecutor.schedule(this::process, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
+        LOGGER.info("SignalProcessor started. Scheduling it every {}ms", connectorConfig.getSignalPollInterval().toMillis());
+        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
     }
 
-    public void stop() {
+    public void stop() throws InterruptedException{
 
         signalProcessorExecutor.shutdown();
+        boolean isShutdown = signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+
+        if (!isShutdown) {
+            LOGGER.warn("SignalProcessor didn't stop in the expected time, shutting down executor now");
+
+            // Clear interrupt flag so the forced termination is always attempted
+            Thread.interrupted();
+            signalProcessorExecutor.shutdownNow();
+            signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        LOGGER.info("SignalProcessor stopped");
     }
 
     public void registerSignalAction(String id, SignalAction<P> signal) {
@@ -109,6 +128,7 @@ public class SignalProcessor<P extends Partition> {
 
     private void process() {
 
+        LOGGER.trace("SignalProcessor processing");
         signalChannelReaders.parallelStream()
                 .filter(isEnabled())
                 .map(SignalChannelReader::read)
