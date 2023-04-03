@@ -23,6 +23,7 @@ import io.debezium.document.DocumentReader;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
 import io.debezium.pipeline.signal.actions.SignalAction;
+import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.Partition;
 
 public class SignalProcessorTest {

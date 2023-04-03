@@ -32,7 +32,7 @@ public class SignalRecord {
         this.data = data;
     }
 
-    static Optional<SignalRecord> buildSignalRecord(Struct value, CommonConnectorConfig config) {
+    public static Optional<SignalRecord> buildSignalRecord(Struct value, CommonConnectorConfig config) {
 
         final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
 

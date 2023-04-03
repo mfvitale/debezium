@@ -29,6 +29,7 @@ import io.debezium.pipeline.signal.actions.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.SchemaChanges;
 import io.debezium.pipeline.signal.actions.SignalAction;
 import io.debezium.pipeline.signal.actions.StopSnapshot;
+import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.snapshot.incremental.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.spi.Partition;

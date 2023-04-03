@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.signal;
+package io.debezium.pipeline.signal.channels;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.signal.SignalRecord;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.

@@ -18,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
+import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 
 /**
  * @author Jiri Pechanec
