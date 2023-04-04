@@ -13,14 +13,17 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.actions.Log;
 import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 
 public class SignalsIT extends AbstractConnectorTest {
@@ -49,7 +52,7 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void signalLog() throws InterruptedException {
         // Testing.Print.enable();
-        final LogInterceptor logInterceptor = new LogInterceptor(DatabaseSignalChannel.class);
+        final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -57,6 +60,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -72,9 +76,11 @@ public class SignalsIT extends AbstractConnectorTest {
         // Insert the signal record
         TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')");
 
+        waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
+
         final SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.allRecordsInOrder()).hasSize(2);
-        assertThat(logInterceptor.containsMessage("Received signal")).isTrue();
+        assertThat(logInterceptor.containsMessage("Signal message at offset")).isTrue();
     }
 
     @Test
@@ -117,6 +123,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -165,6 +172,8 @@ public class SignalsIT extends AbstractConnectorTest {
                 + "    } ]\n"
                 + "  }\n"
                 + "}]}')");
+
+        Awaitility.await().pollDelay(2000, TimeUnit.MILLISECONDS).until(() -> true);
 
         TestHelper.execute(INSERT_STMT);
 

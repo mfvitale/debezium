@@ -45,4 +45,9 @@
         level="debug" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+    <logger
+            name="io.debezium.pipeline.signal.SignalProcessor"
+            level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 </configuration>

@@ -70,7 +70,7 @@ public class SignalProcessor<P extends Partition> {
         this.connectorConfig = config;
         this.signalChannelReaders = signalChannelReaders;
         this.documentReader = documentReader;
-        this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getName(), false);
+        this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getSimpleName(), false);
 
         signalChannelReaders.stream()
                 .filter(isEnabled())
@@ -103,7 +103,7 @@ public class SignalProcessor<P extends Partition> {
         signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
     }
 
-    public void stop() throws InterruptedException{
+    public void stop() throws InterruptedException {
 
         signalProcessorExecutor.shutdown();
         boolean isShutdown = signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);

@@ -749,10 +749,10 @@ public abstract class CommonConnectorConfig {
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
 
-       if(config.hasKey(SIGNAL_ENABLED_CHANNELS)) {
-           return config.getList(SIGNAL_ENABLED_CHANNELS);
-       }
-       return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
+        if (config.hasKey(SIGNAL_ENABLED_CHANNELS)) {
+            return config.getList(SIGNAL_ENABLED_CHANNELS);
+        }
+        return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
                 .map(String::trim)
                 .collect(Collectors.toList());
     }
