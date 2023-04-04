@@ -86,13 +86,16 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void signalingDisabled() throws InterruptedException {
         // Testing.Print.enable();
-        final LogInterceptor logInterceptor = new LogInterceptor(DatabaseSignalChannel.class);
+        final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -105,12 +108,14 @@ public class SignalsIT extends AbstractConnectorTest {
         // Insert the signal record
         TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message\"}')");
 
+        Awaitility.await().pollDelay(2000, TimeUnit.MILLISECONDS).until(() -> true);
+
         // insert and verify a new record
         TestHelper.execute(INSERT_STMT);
 
         final SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.allRecordsInOrder()).hasSize(2);
-        assertThat(logInterceptor.containsMessage("Received signal")).isFalse();
+        assertThat(logInterceptor.containsMessage("Signal message")).isFalse();
     }
 
     @Test
