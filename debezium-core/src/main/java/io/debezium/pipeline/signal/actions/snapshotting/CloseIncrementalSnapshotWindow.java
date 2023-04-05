@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.source.snapshot.incremental;
+package io.debezium.pipeline.signal.actions.snapshotting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

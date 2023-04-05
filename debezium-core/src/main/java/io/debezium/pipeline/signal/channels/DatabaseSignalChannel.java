@@ -64,7 +64,7 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     public void close() {
     }
 
-    /**
+    /** Used in streaming flow to add signals from signaling table
      *
      * @param value Envelope with change from signaling table
      * @param connectorConfig Configurations coming from connector

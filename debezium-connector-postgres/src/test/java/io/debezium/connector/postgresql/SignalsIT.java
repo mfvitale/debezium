@@ -24,7 +24,6 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
-import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 
 public class SignalsIT extends AbstractConnectorTest {
 
