@@ -74,7 +74,7 @@ public class SignalProcessor<P extends Partition> {
 
         signalChannelReaders.stream()
                 .filter(isEnabled())
-                .forEach(SignalChannelReader::init);
+                .forEach(signalChannelReader -> signalChannelReader.init(connectorConfig));
 
         registerSignalAction(Log.NAME, new Log<>());
         if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {

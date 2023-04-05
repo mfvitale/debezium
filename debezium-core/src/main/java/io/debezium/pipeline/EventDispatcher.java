@@ -233,7 +233,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              ConnectHeaders headers)
                             throws InterruptedException {
                         if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId)) {
-                            databaseSignalChannel.process(value, connectorConfig);
+                            databaseSignalChannel.process(value);
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {

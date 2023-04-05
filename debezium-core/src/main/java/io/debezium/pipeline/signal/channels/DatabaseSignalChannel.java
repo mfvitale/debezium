@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,13 +40,17 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseSignalChannel.class);
     public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
 
+    public CommonConnectorConfig connectorConfig;
+
     @Override
     public String name() {
         return "database";
     }
 
     @Override
-    public void init() {
+    public void init(CommonConnectorConfig connectorConfig) {
+
+        this.connectorConfig = connectorConfig;
     }
 
     @Override
@@ -67,10 +73,9 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     /** Used in streaming flow to add signals from signaling table
      *
      * @param value Envelope with change from signaling table
-     * @param connectorConfig Configurations coming from connector
      * @return true if the signal was processed
      */
-    public boolean process(Struct value, CommonConnectorConfig connectorConfig) throws InterruptedException {
+    public boolean process(Struct value) throws InterruptedException {
 
         LOGGER.trace("Received event from signaling table. Enqueue for process");
         try {

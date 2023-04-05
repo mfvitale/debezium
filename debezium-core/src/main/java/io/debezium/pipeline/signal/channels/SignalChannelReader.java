@@ -7,6 +7,7 @@ package io.debezium.pipeline.signal.channels;
 
 import java.util.List;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.SignalRecord;
 
@@ -15,7 +16,7 @@ import io.debezium.pipeline.signal.SignalRecord;
  *
  * Implementations must:
  * define the name of the reader in {@link #name()},
- * initialize specific configuration/variables/connections in the {@link #init()} method,
+ * initialize specific configuration/variables/connections in the {@link #init(CommonConnectorConfig connectorConfig)} method,
  * provide a list of signal record in the {@link #read()} method. It is called by {@link SignalProcessor}
  * Close all allocated resources int the {@link #close()} method.
  *
@@ -24,7 +25,7 @@ import io.debezium.pipeline.signal.SignalRecord;
 public interface SignalChannelReader { // TODO add java doc
     String name();
 
-    void init();
+    void init(CommonConnectorConfig connectorConfig);
 
     List<SignalRecord> read();
 

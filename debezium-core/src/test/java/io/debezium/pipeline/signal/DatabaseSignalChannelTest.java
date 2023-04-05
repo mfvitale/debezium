@@ -28,7 +28,9 @@ public class DatabaseSignalChannelTest {
 
     @Test
     public void shouldExecuteFromEnvelope() throws Exception {
+
         final DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
+        databaseSignalChannel.init(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("col2", Schema.OPTIONAL_STRING_SCHEMA)
@@ -44,7 +46,7 @@ public class DatabaseSignalChannelTest {
         record.put("col2", "custom");
         record.put("col3", "{\"v\": 5}");
 
-        databaseSignalChannel.process(env.create(record, null, null), config());
+        databaseSignalChannel.process(env.create(record, null, null));
         List<SignalRecord> signalRecords = databaseSignalChannel.read();
         assertThat(signalRecords).hasSize(1);
         assertThat(signalRecords.get(0).getData()).isEqualTo("{\"v\": 5}");
@@ -52,7 +54,9 @@ public class DatabaseSignalChannelTest {
 
     @Test
     public void shouldIgnoreInvalidEnvelope() throws Exception {
+
         final DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
+        databaseSignalChannel.init(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("col2", Schema.OPTIONAL_STRING_SCHEMA)
@@ -66,10 +70,10 @@ public class DatabaseSignalChannelTest {
         record.put("col1", "log1");
         record.put("col2", "custom");
 
-        databaseSignalChannel.process(env.create(record, null, null), config());
+        databaseSignalChannel.process(env.create(record, null, null));
         assertThat(databaseSignalChannel.read()).hasSize(0);
 
-        databaseSignalChannel.process(record, config());
+        databaseSignalChannel.process(record);
         assertThat(databaseSignalChannel.read()).hasSize(0);
     }
 

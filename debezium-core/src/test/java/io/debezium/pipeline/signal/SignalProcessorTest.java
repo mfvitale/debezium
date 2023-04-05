@@ -40,7 +40,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
@@ -77,7 +77,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
@@ -97,7 +97,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
@@ -134,7 +134,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
@@ -168,7 +168,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
@@ -202,7 +202,7 @@ public class SignalProcessorTest {
             }
 
             @Override
-            public void init() {
+            public void init(CommonConnectorConfig connectorConfig) {
             }
 
             @Override
