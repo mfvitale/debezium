@@ -26,17 +26,20 @@ public class SignalRecord {
     private final String type;
     private final String data;
 
-    public SignalRecord(String id, String type, String data) {
+    private final Long channelOffset;
+
+    public SignalRecord(String id, String type, String data, Long channelOffset) {
         this.id = id;
         this.type = type;
         this.data = data;
+        this.channelOffset = channelOffset;
     }
 
-    public static Optional<SignalRecord> buildSignalRecord(Struct value, CommonConnectorConfig config) {
+    public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {
 
         final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
 
-        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2]));
+        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], null));
     }
 
     public String getId() {

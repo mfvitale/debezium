@@ -33,6 +33,8 @@ import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot
 import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.spi.schema.DataCollectionId;
@@ -43,7 +45,7 @@ import io.debezium.util.Threads;
  *
  * @author Mario Fiore Vitale
  */
-public class SignalProcessor<P extends Partition> {
+public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
 
@@ -65,7 +67,8 @@ public class SignalProcessor<P extends Partition> {
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
                            EventDispatcher<P, ? extends DataCollectionId> eventDispatcher,
-                           List<SignalChannelReader> signalChannelReaders, DocumentReader documentReader) {
+                           List<SignalChannelReader> signalChannelReaders, DocumentReader documentReader,
+                           Offsets<P, O> previousOffsets) {
 
         this.connectorConfig = config;
         this.signalChannelReaders = signalChannelReaders;
@@ -147,6 +150,7 @@ public class SignalProcessor<P extends Partition> {
         try {
             final Document jsonData = (signalRecord.getData() == null || signalRecord.getData().isEmpty()) ? Document.create()
                     : documentReader.read(signalRecord.getData());
+
             action.arrived(new SignalPayload<>(null, signalRecord.getId(), signalRecord.getType(), jsonData, null, null));
         }
         catch (IOException e) {

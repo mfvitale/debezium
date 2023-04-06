@@ -6,59 +6,77 @@
 package io.debezium.pipeline.signal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
+import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.document.DocumentReader;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.signal.actions.Log;
 import io.debezium.pipeline.signal.actions.SignalAction;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.spi.schema.DataCollectionId;
 
 public class SignalProcessorTest {
 
-    private SignalProcessor<TestPartition> signalProcess;
+    private SignalProcessor<TestPartition, OffsetContext> signalProcess;
     private final DocumentReader documentReader = DocumentReader.defaultReader();
+
+    private Offsets<TestPartition, OffsetContext> initialOffset;
+
+    @Before
+    public void setUp() {
+        TestOffset testOffset = new TestOffset(new BaseSourceInfo(baseConfig()) {
+            @Override
+            protected Instant timestamp() {
+                return null;
+            }
+
+            @Override
+            protected String database() {
+                return null;
+            }
+        });
+
+        initialOffset = Offsets.of(new TestPartition(), testOffset);
+    }
 
     @Test
     public void shouldExecuteLog() {
-        final SignalChannelReader genericChannel = new SignalChannelReader() {
-            @Override
-            public String name() {
-                return "generic";
-            }
 
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}"));
-            }
-
-            @Override
-            public void close() {
-            }
-        };
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}", -1L)),
+                List.of());
 
         final LogInterceptor log = new LogInterceptor(Log.class);
 
         signalProcess = new SignalProcessor<>(SourceConnector.class,
                 baseConfig(),
                 null,
-                List.of(genericChannel), documentReader);
+                List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
 
@@ -69,121 +87,75 @@ public class SignalProcessorTest {
     }
 
     @Test
-    public void onlyEnabledConnectorShouldExecute() {
-        final SignalChannelReader genericChannel1 = new SignalChannelReader() {
-            @Override
-            public String name() {
-                return "generic1";
-            }
+    public void onlyEnabledConnectorShouldExecute() throws InterruptedException {
 
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
+        final SignalChannelReader genericChannel1 = mock(SignalChannelReader.class);
 
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}"));
-            }
+        when(genericChannel1.name()).thenReturn("generic1");
+        when(genericChannel1.read()).thenReturn(
+                List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}", -1L)),
+                List.of());
 
-            @Override
-            public void close() {
-            }
-        };
-
-        final SignalChannelReader genericChannel2 = new SignalChannelReader() {
-            @Override
-            public String name() {
-                return "generic2";
-            }
-
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
-
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}"));
-            }
-
-            @Override
-            public void close() {
-            }
-        };
+        final SignalChannelReader genericChannel2 = mock(SignalChannelReader.class);
+        when(genericChannel2.name()).thenReturn("generic2");
+        when(genericChannel2.read()).thenReturn(
+                List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}", -1L)),
+                List.of());
 
         final LogInterceptor log = new LogInterceptor(Log.class);
 
         signalProcess = new SignalProcessor<>(SourceConnector.class,
                 baseConfig(Map.of(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS.name(), "generic1")),
                 null,
-                List.of(genericChannel1, genericChannel2), documentReader);
+                List.of(genericChannel1, genericChannel2), documentReader, initialOffset);
 
         signalProcess.start();
 
         Awaitility.await()
-                .atMost(5000, TimeUnit.MILLISECONDS)
+                .atMost(200, TimeUnit.MILLISECONDS)
                 .until(() -> log.containsMessage("signallog <none>"));
+
+        signalProcess.stop();
 
         assertThat(log.countOccurrences("signallog {}")).isEqualTo(1);
     }
 
     @Test
-    public void shouldIgnoreInvalidSignalType() {
-        final SignalChannelReader genericChannel = new SignalChannelReader() {
-            public String name() {
-                return "generic";
-            }
+    public void shouldIgnoreInvalidSignalType() throws InterruptedException {
 
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "invalidType", "{\"message\": \"signallog {}\"}"));
-            }
-
-            @Override
-            public void close() {
-            }
-        };
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("log1", "invalidType", "{\"message\": \"signallog {}\"}", -1L)),
+                List.of());
 
         final LogInterceptor log = new LogInterceptor(SignalProcessor.class);
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
 
         Awaitility.await()
-                .atMost(40, TimeUnit.SECONDS)
+                .atMost(200, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(log.containsMessage("Signal 'log1' has been received but the type 'invalidType' is not recognized")).isTrue());
 
+        signalProcess.stop();
     }
 
     @Test
     public void shouldIgnoreUnparseableData() {
-        final SignalChannelReader genericChannel = new SignalChannelReader() {
 
-            public String name() {
-                return "generic";
-            }
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
-
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "log", "{\"message: \"signallog\"}"));
-            }
-
-            @Override
-            public void close() {
-            }
-        };
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("log1", "log", "{\"message: \"signallog\"}", -1L)),
+                List.of());
 
         final LogInterceptor log = new LogInterceptor(SignalProcessor.class);
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
 
@@ -195,25 +167,13 @@ public class SignalProcessorTest {
 
     @Test
     public void shouldRegisterAdditionalAction() {
-        final SignalChannelReader genericChannel = new SignalChannelReader() {
 
-            public String name() {
-                return "generic";
-            }
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
-            @Override
-            public void init(CommonConnectorConfig connectorConfig) {
-            }
-
-            @Override
-            public List<SignalRecord> read() {
-                return List.of(new SignalRecord("log1", "custom", "{\"v\": 5}"));
-            }
-
-            @Override
-            public void close() {
-            }
-        };
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("log1", "custom", "{\"v\": 5}", -1L)),
+                List.of());
 
         final AtomicInteger called = new AtomicInteger();
         final SignalAction<TestPartition> testAction = signalPayload -> {
@@ -221,7 +181,7 @@ public class SignalProcessorTest {
             return true;
         };
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.registerSignalAction("custom", testAction);
 
@@ -266,6 +226,48 @@ public class SignalProcessorTest {
         @Override
         public Map<String, String> getSourcePartition() {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    private static class TestOffset extends CommonOffsetContext {
+
+        public TestOffset(BaseSourceInfo sourceInfo) {
+            super(sourceInfo);
+        }
+
+        @Override
+        public Map<String, ?> getOffset() {
+            return null;
+        }
+
+        @Override
+        public Schema getSourceInfoSchema() {
+            return null;
+        }
+
+        @Override
+        public boolean isSnapshotRunning() {
+            return false;
+        }
+
+        @Override
+        public void preSnapshotStart() {
+
+        }
+
+        @Override
+        public void preSnapshotCompletion() {
+
+        }
+
+        @Override
+        public void event(DataCollectionId collectionId, Instant timestamp) {
+
+        }
+
+        @Override
+        public TransactionContext getTransactionContext() {
+            return null;
         }
     }
 

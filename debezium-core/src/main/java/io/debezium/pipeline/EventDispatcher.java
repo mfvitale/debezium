@@ -125,6 +125,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.databaseSignalChannel = new DatabaseSignalChannel(); // TODO Maybe this should be get using ServiceLoader
+        this.databaseSignalChannel.init(connectorConfig);
         this.heartbeat = heartbeat;
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
@@ -151,6 +152,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
         this.transactionMonitor = transactionMonitor;
         this.databaseSignalChannel = new DatabaseSignalChannel(); // TODO Maybe this should be get using ServiceLoader
+        this.databaseSignalChannel.init(connectorConfig);
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);

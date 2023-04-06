@@ -10,8 +10,6 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,11 +73,11 @@ public class DatabaseSignalChannel implements SignalChannelReader {
      * @param value Envelope with change from signaling table
      * @return true if the signal was processed
      */
-    public boolean process(Struct value) throws InterruptedException {
+    public boolean process(Struct value) throws InterruptedException { // TODO manage partition and offset
 
         LOGGER.trace("Received event from signaling table. Enqueue for process");
         try {
-            Optional<SignalRecord> result = SignalRecord.buildSignalRecord(value, connectorConfig);
+            Optional<SignalRecord> result = SignalRecord.buildSignalRecordFromChangeEventSource(value, connectorConfig);
             if (result.isEmpty()) {
                 return false;
             }

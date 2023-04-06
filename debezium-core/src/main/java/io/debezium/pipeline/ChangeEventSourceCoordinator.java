@@ -69,7 +69,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ExecutorService executor;
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
-    private final SignalProcessor<P> signalProcessor;
+    private final SignalProcessor<P, O> signalProcessor;
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     private volatile boolean running;
@@ -92,7 +92,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
         List<SignalChannelReader> signalChannelReaders = availableSignalChannels.stream().map(ServiceLoader.Provider::get).collect(Collectors.toList());
-        this.signalProcessor = new SignalProcessor<>(connectorType, connectorConfig, eventDispatcher, signalChannelReaders, DocumentReader.defaultReader());
+        this.signalProcessor = new SignalProcessor<>(connectorType, connectorConfig, eventDispatcher, signalChannelReaders, DocumentReader.defaultReader(),
+                previousOffsets);
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,

@@ -62,7 +62,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
-    private final RelationalDatabaseConnectorConfig connectorConfig;
+    protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
