@@ -66,6 +66,8 @@ public class DatabaseSignalChannel implements SignalChannelReader {
 
     @Override
     public void close() {
+
+        SIGNALS.clear();
     }
 
     /** Used in streaming flow to add signals from signaling table
@@ -73,7 +75,7 @@ public class DatabaseSignalChannel implements SignalChannelReader {
      * @param value Envelope with change from signaling table
      * @return true if the signal was processed
      */
-    public boolean process(Struct value) throws InterruptedException { // TODO manage partition and offset
+    public boolean process(Struct value) throws InterruptedException {
 
         LOGGER.trace("Received event from signaling table. Enqueue for process");
         try {

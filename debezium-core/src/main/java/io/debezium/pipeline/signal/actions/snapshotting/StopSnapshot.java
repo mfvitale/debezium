@@ -49,7 +49,7 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource()
-                        .stopSnapshot(signalPayload.partition, dataCollections, signalPayload.offsetContext);
+                        .stopSnapshot(signalPayload.partition, signalPayload.offsetContext, signalPayload.channelOffset, dataCollections);
                 break;
         }
 

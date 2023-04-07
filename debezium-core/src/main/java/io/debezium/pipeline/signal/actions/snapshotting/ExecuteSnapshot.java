@@ -55,7 +55,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload.partition, dataCollections, additionalCondition, surrogateKey, signalPayload.offsetContext);
+                        signalPayload.partition, signalPayload.offsetContext, signalPayload.channelOffset, dataCollections, additionalCondition, surrogateKey);
                 break;
         }
         return true;

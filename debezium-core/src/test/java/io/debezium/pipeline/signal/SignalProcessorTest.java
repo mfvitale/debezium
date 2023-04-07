@@ -49,12 +49,12 @@ public class SignalProcessorTest {
         TestOffset testOffset = new TestOffset(new BaseSourceInfo(baseConfig()) {
             @Override
             protected Instant timestamp() {
-                return null;
+                return Instant.now();
             }
 
             @Override
             protected String database() {
-                return null;
+                return "test_db";
             }
         });
 
@@ -62,7 +62,7 @@ public class SignalProcessorTest {
     }
 
     @Test
-    public void shouldExecuteLog() {
+    public void shouldExecuteLog() throws InterruptedException {
 
         final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
@@ -81,9 +81,12 @@ public class SignalProcessorTest {
         signalProcess.start();
 
         Awaitility.await()
-                .atMost(40, TimeUnit.SECONDS)
-                .until(() -> log.containsMessage("signallog <none>"));
-        assertThat(log.containsMessage("signallog <none>")).isTrue();
+                .atMost(200, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> log.containsMessage("signallog {LSN=12345}"));
+
+        signalProcess.stop();
+
+        assertThat(log.containsMessage("signallog {LSN=12345}")).isTrue();
     }
 
     @Test
@@ -112,8 +115,8 @@ public class SignalProcessorTest {
         signalProcess.start();
 
         Awaitility.await()
-                .atMost(200, TimeUnit.MILLISECONDS)
-                .until(() -> log.containsMessage("signallog <none>"));
+                .atMost(300, TimeUnit.MILLISECONDS)
+                .until(() -> log.containsMessage("signallog {LSN=12345}"));
 
         signalProcess.stop();
 
@@ -231,13 +234,13 @@ public class SignalProcessorTest {
 
     private static class TestOffset extends CommonOffsetContext {
 
-        public TestOffset(BaseSourceInfo sourceInfo) {
+        TestOffset(BaseSourceInfo sourceInfo) {
             super(sourceInfo);
         }
 
         @Override
         public Map<String, ?> getOffset() {
-            return null;
+            return Map.of("LSN", 12345);
         }
 
         @Override

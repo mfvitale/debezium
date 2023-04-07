@@ -53,4 +53,8 @@ public class SignalRecord {
     public String getData() {
         return data;
     }
+
+    public Long getChannelOffset() {
+        return channelOffset;
+    }
 }

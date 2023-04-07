@@ -31,11 +31,11 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     void init(P partition, OffsetContext offsetContext);
 
-    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey,
-                                          OffsetContext offsetContext)
+    void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+                                          Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException;
 
-    void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext);
+    void stopSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds);
 
     default void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
     }

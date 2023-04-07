@@ -461,8 +461,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey,
-                                                 OffsetContext offsetContext)
+    public void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
@@ -483,7 +483,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void stopSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {

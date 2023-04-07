@@ -115,6 +115,10 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     public void stop() throws InterruptedException {
 
+        signalChannelReaders.stream()
+                .filter(isEnabled())
+                .forEach(SignalChannelReader::close);
+
         signalProcessorExecutor.shutdown();
         boolean isShutdown = signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 

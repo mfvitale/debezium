@@ -336,8 +336,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, List<String> dataCollectionIds,
-                                                 Optional<String> additionalCondition, Optional<String> surrogateKey, OffsetContext offsetContext)
+    public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         if (additionalCondition != null && additionalCondition.isPresent()) {
             throw new UnsupportedOperationException("Additional condition not supported for MongoDB");
@@ -365,7 +365,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
