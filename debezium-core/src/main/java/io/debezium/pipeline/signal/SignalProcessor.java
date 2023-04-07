@@ -64,6 +64,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private final DocumentReader documentReader;
 
+    private Offsets<P, O> previousOffsets;
+
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
                            EventDispatcher<P, ? extends DataCollectionId> eventDispatcher,
@@ -73,6 +75,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         this.connectorConfig = config;
         this.signalChannelReaders = signalChannelReaders;
         this.documentReader = documentReader;
+        this.previousOffsets = previousOffsets;
         this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getSimpleName(), false);
 
         signalChannelReaders.stream()
@@ -98,6 +101,10 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private Predicate<SignalChannelReader> isEnabled() {
         return reader -> connectorConfig.getEnabledChannels().contains(reader.name());
+    }
+
+    public void setContext(O offset) {
+        previousOffsets = Offsets.of(previousOffsets.getTheOnlyPartition(), offset);
     }
 
     public void start() {
@@ -151,13 +158,18 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             final Document jsonData = (signalRecord.getData() == null || signalRecord.getData().isEmpty()) ? Document.create()
                     : documentReader.read(signalRecord.getData());
 
-            action.arrived(new SignalPayload<>(null, signalRecord.getId(), signalRecord.getType(), jsonData, null, null));
+            action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
+                    previousOffsets.getTheOnlyOffset(), null, signalRecord.getChannelOffset()));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
         }
         catch (InterruptedException e) {
             LOGGER.warn("Action {} has been interrupted. The signal {} may not have been processed.", signalRecord.getType(), signalRecord);
+            Thread.currentThread().interrupt();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord);
         }
     }
 }

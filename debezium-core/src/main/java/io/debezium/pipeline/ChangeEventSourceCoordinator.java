@@ -149,6 +149,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
 
+        signalProcessor.setContext(snapshotResult.getOffset());
+
         if (running && snapshotResult.isCompletedOrSkipped()) {
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
             streamEvents(context, partition, snapshotResult.getOffset());
