@@ -87,6 +87,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn snapshotScn;
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
+    private OracleOffsetContext effectiveOffset;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -110,6 +111,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.maxDelay = connectorConfig.getLogMiningMaxDelay();
     }
 
+    @Override
+    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+        StreamingChangeEventSource.super.init(offsetContext);
+    }
+
     /**
      * This is the loop to get changes from LogMiner
      *
@@ -126,6 +132,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             // We explicitly expect auto-commit to be disabled
             jdbcConnection.setAutoCommit(false);
 
+            this.effectiveOffset = offsetContext;
             startScn = offsetContext.getScn();
             snapshotScn = offsetContext.getSnapshotScn();
             Scn firstScn = getFirstScnInLogs(jdbcConnection);
@@ -906,5 +913,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         // nothing to do
+    }
+
+    @Override
+    public OracleOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 }

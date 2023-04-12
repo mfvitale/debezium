@@ -149,7 +149,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
 
-        signalProcessor.setContext(snapshotResult.getOffset());
+        LOGGER.debug("Snapshot result {}", snapshotResult);
 
         if (running && snapshotResult.isCompletedOrSkipped()) {
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
@@ -194,7 +194,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
-        streamingSource.init();
+        streamingSource.init(offsetContext);
+        signalProcessor.setContext(streamingSource.getOffsetContext());
 
         final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);

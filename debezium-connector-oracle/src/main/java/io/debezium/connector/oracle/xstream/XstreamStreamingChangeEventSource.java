@@ -61,6 +61,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      * internal Oracle code locking.
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
+    private OracleOffsetContext effectiveOffset;
 
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
                                              EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
@@ -78,8 +79,15 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
+    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+        StreamingChangeEventSource.super.init(offsetContext);
+    }
+
+    @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
             throws InterruptedException {
+
+        this.effectiveOffset = offsetContext;
 
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext,
@@ -137,6 +145,11 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             // (last) delivered value in a single step instead of incrementally
             sendPublishedPosition(lcrPosition, scn);
         }
+    }
+
+    @Override
+    public OracleOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     private byte[] convertScnToPosition(Scn scn) {
