@@ -44,13 +44,13 @@ import io.debezium.util.Loggings;
 public class KafkaSignalChannel implements SignalChannelReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaSignalChannel.class);
+    public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
+    private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
 
     private String topicName;
     private String connectorName;
     private Duration pollTimeoutMs;
     private KafkaConsumer<String, String> signalsConsumer;
-    public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
-    private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
 
     public static final Field SIGNAL_TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
             .withDisplayName("Signal topic name")
@@ -173,7 +173,6 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public void close() {
-
         signalsConsumer.close();
     }
 }

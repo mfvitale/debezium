@@ -624,6 +624,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop
@@ -676,6 +679,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop

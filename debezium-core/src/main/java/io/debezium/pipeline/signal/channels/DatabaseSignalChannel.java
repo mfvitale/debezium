@@ -9,7 +9,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +43,9 @@ public class DatabaseSignalChannel implements SignalChannelReader {
     public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
 
     public CommonConnectorConfig connectorConfig;
+
+    private static final Lock lock = new ReentrantLock();
+    private static final Condition stopProcessed = lock.newCondition();
 
     @Override
     public String name() {
@@ -83,22 +90,46 @@ public class DatabaseSignalChannel implements SignalChannelReader {
             if (result.isEmpty()) {
                 return false;
             }
-            /*
-             * TODO I think can be removed
-             * Struct source = null;
-             * if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
-             * source = value.getStruct(Envelope.FieldName.SOURCE);
-             * }
-             */
 
             final SignalRecord signalRecord = result.get();
+
             SIGNALS.add(signalRecord);
+
+            if(StopSnapshot.NAME.equals(signalRecord.getType())) {
+                LOGGER.trace("Stop action - going to wait it processing");
+                waitProcessing(signalRecord);
+            }
             return true;
 
         }
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
             return false;
+        }
+    }
+
+    //Close action must be executed synchronous to avoid wrong offset saving
+    private static void waitProcessing(SignalRecord signalRecord) throws InterruptedException {
+
+        lock.lock();
+        try {
+            while (SIGNALS.contains(signalRecord)) {
+                LOGGER.trace("Waiting processing of signal {}", signalRecord);
+                stopProcessed.await();
+                LOGGER.trace("Signal has been processed. Stop waiting.");
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void stopFinished() {
+        lock.lock();
+        try {
+            LOGGER.trace("Stop action finished.");
+            stopProcessed.signal();
+        } finally {
+            lock.unlock();
         }
     }
 }

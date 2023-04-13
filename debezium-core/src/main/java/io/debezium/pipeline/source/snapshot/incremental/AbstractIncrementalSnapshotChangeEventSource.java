@@ -98,6 +98,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Closing Window {}", context.toString());
         if (!context.closeWindow(id)) {
             return;
         }
@@ -485,6 +486,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     public void stopSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Stopping incremental snapshot with context {}", context);
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
                 LOGGER.info("Stopping incremental snapshot.");

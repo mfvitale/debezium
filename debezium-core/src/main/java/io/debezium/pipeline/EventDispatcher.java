@@ -404,7 +404,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
+            LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offsetContext);
 
             // Truncate events must have null key schema as they are sent to table topics without keys
             Schema keySchema = (key == null && operation == Operation.TRUNCATE) ? null

@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.signal;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
@@ -25,7 +26,6 @@ public class SignalRecord {
     private final String id;
     private final String type;
     private final String data;
-
     private final Long channelOffset;
 
     public SignalRecord(String id, String type, String data, Long channelOffset) {
@@ -56,5 +56,30 @@ public class SignalRecord {
 
     public Long getChannelOffset() {
         return channelOffset;
+    }
+
+    @Override
+    public String toString() {
+        return "SignalRecord{" +
+                "id='" + id + '\'' +
+                ", type='" + type + '\'' +
+                ", data='" + data + '\'' +
+                ", channelOffset=" + channelOffset +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        SignalRecord that = (SignalRecord) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

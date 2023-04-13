@@ -15,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
+import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private Offsets<P, O> previousOffsets;
 
+    private DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
+
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
                            EventDispatcher<P, ? extends DataCollectionId> eventDispatcher,
@@ -110,14 +113,15 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     public void start() {
 
         LOGGER.info("SignalProcessor started. Scheduling it every {}ms", connectorConfig.getSignalPollInterval().toMillis());
-        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
+        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, 1, TimeUnit.NANOSECONDS);
     }
 
     public void stop() throws InterruptedException {
 
-        signalChannelReaders.stream()
+        //The close must run with same thread of the read otherwise Kafka client will detect multi-thread and throw and exception
+        signalProcessorExecutor.submit(() -> signalChannelReaders.stream()
                 .filter(isEnabled())
-                .forEach(SignalChannelReader::close);
+                .forEach(SignalChannelReader::close));
 
         signalProcessorExecutor.shutdown();
         boolean isShutdown = signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
@@ -152,6 +156,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private void processSignal(SignalRecord signalRecord) {
 
+        LOGGER.debug("Signal Processor offset context {}", previousOffsets.getOffsets());
         LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", signalRecord.getId(), signalRecord.getType(), signalRecord.getData());
         final SignalAction<P> action = signalActions.get(signalRecord.getType());
         if (action == null) {
@@ -163,7 +168,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                     : documentReader.read(signalRecord.getData());
 
             action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
-                    previousOffsets.getTheOnlyOffset(), null, signalRecord.getChannelOffset()));
+                    previousOffsets.getTheOnlyOffset(), signalRecord.getChannelOffset()));
+
+            if(StopSnapshot.NAME.equals(signalRecord.getType())) {
+                databaseSignalChannel.stopFinished();
+            }
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);
@@ -173,7 +182,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             Thread.currentThread().interrupt();
         }
         catch (Exception e) {
-            LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord);
+            LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord, e);
         }
     }
 }
