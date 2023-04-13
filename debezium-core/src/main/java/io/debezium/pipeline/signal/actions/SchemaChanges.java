@@ -63,7 +63,7 @@ public class SchemaChanges<P extends Partition> implements SignalAction<P> {
                             tableChange,
                             signalPayload.partition.getSourcePartition(),
                             signalPayload.offsetContext.getOffset(),
-                            signalPayload.source,
+                            signalPayload.offsetContext.getSourceInfo(),
                             database,
                             schema));
                 });
