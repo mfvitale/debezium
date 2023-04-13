@@ -12,17 +12,17 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.SignalRecord;
 
 /**
- * This interface is used to provide more read channel for the Debezium signaling feature:
+ * This interface is used to provide custom read channels for the Debezium signaling feature:
  *
  * Implementations must:
  * define the name of the reader in {@link #name()},
  * initialize specific configuration/variables/connections in the {@link #init(CommonConnectorConfig connectorConfig)} method,
- * provide a list of signal record in the {@link #read()} method. It is called by {@link SignalProcessor}
+ * provide a list of signal record in the {@link #read()} method. It is called by {@link SignalProcessor} in a thread loop
  * Close all allocated resources int the {@link #close()} method.
  *
  * @author Mario Fiore Vitale
  */
-public interface SignalChannelReader { // TODO add java doc
+public interface SignalChannelReader {
     String name();
 
     void init(CommonConnectorConfig connectorConfig);

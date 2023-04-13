@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,22 +22,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.actions.Log;
-import io.debezium.pipeline.signal.actions.SchemaChanges;
 import io.debezium.pipeline.signal.actions.SignalAction;
-import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
-import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
-import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
-import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot;
-import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Threads;
 
 /**
@@ -67,11 +57,9 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private Offsets<P, O> previousOffsets;
 
-    private DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
-
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
-                           EventDispatcher<P, ? extends DataCollectionId> eventDispatcher,
+                           Map<String, SignalAction<P>> signalActions,
                            List<SignalChannelReader> signalChannelReaders, DocumentReader documentReader,
                            Offsets<P, O> previousOffsets) {
 
@@ -85,25 +73,15 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                 .filter(isEnabled())
                 .forEach(signalChannelReader -> signalChannelReader.init(connectorConfig));
 
-        registerSignalAction(Log.NAME, new Log<>());
-        if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {
-            registerSignalAction(SchemaChanges.NAME,
-                    new SchemaChanges<>(eventDispatcher, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema()));
-        }
-        else {
-            registerSignalAction(SchemaChanges.NAME, new SchemaChanges<>(eventDispatcher, false));
-        }
-
-        registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot<>(eventDispatcher));
-        registerSignalAction(StopSnapshot.NAME, new StopSnapshot<>(eventDispatcher));
-        registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>());
-        registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(eventDispatcher));
-        registerSignalAction(PauseIncrementalSnapshot.NAME, new PauseIncrementalSnapshot<>(eventDispatcher));
-        registerSignalAction(ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(eventDispatcher));
+        this.signalActions.putAll(signalActions);
     }
 
     private Predicate<SignalChannelReader> isEnabled() {
         return reader -> connectorConfig.getEnabledChannels().contains(reader.name());
+    }
+
+    private boolean isEnabled(String channelName) {
+        return connectorConfig.getEnabledChannels().contains(channelName);
     }
 
     public void setContext(O offset) {
@@ -118,7 +96,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     public void stop() throws InterruptedException {
 
-        //The close must run with same thread of the read otherwise Kafka client will detect multi-thread and throw and exception
+        // The close must run with same thread of the read otherwise Kafka client will detect multi-thread and throw and exception
         signalProcessorExecutor.submit(() -> signalChannelReaders.stream()
                 .filter(isEnabled())
                 .forEach(SignalChannelReader::close));
@@ -170,8 +148,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
                     previousOffsets.getTheOnlyOffset(), signalRecord.getChannelOffset()));
 
-            if(StopSnapshot.NAME.equals(signalRecord.getType())) {
-                databaseSignalChannel.stopFinished();
+            if (StopSnapshot.NAME.equals(signalRecord.getType()) && isEnabled(DatabaseSignalChannel.CHANNEL_NAME)) {
+                getDatabaseSignalChannel().stopFinished();
             }
         }
         catch (IOException e) {
@@ -184,5 +162,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         catch (Exception e) {
             LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord, e);
         }
+    }
+
+    public DatabaseSignalChannel getDatabaseSignalChannel() {
+        return (DatabaseSignalChannel) signalChannelReaders.stream()
+                .filter(channel -> channel.name().equals(DatabaseSignalChannel.CHANNEL_NAME))
+                .findFirst().get();
     }
 }

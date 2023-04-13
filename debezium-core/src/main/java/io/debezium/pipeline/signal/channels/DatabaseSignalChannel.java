@@ -13,7 +13,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.signal.SignalRecord;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.
@@ -40,16 +40,16 @@ import io.debezium.pipeline.signal.SignalRecord;
 public class DatabaseSignalChannel implements SignalChannelReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseSignalChannel.class);
+    public static final String CHANNEL_NAME = "database";
     public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
-
-    public CommonConnectorConfig connectorConfig;
-
     private static final Lock lock = new ReentrantLock();
     private static final Condition stopProcessed = lock.newCondition();
 
+    public CommonConnectorConfig connectorConfig;
+
     @Override
     public String name() {
-        return "database";
+        return CHANNEL_NAME;
     }
 
     @Override
@@ -95,7 +95,7 @@ public class DatabaseSignalChannel implements SignalChannelReader {
 
             SIGNALS.add(signalRecord);
 
-            if(StopSnapshot.NAME.equals(signalRecord.getType())) {
+            if (StopSnapshot.NAME.equals(signalRecord.getType())) {
                 LOGGER.trace("Stop action - going to wait it processing");
                 waitProcessing(signalRecord);
             }
@@ -108,7 +108,7 @@ public class DatabaseSignalChannel implements SignalChannelReader {
         }
     }
 
-    //Close action must be executed synchronous to avoid wrong offset saving
+    // Close action must be executed synchronous to avoid wrong offset saving
     private static void waitProcessing(SignalRecord signalRecord) throws InterruptedException {
 
         lock.lock();
@@ -118,7 +118,8 @@ public class DatabaseSignalChannel implements SignalChannelReader {
                 stopProcessed.await();
                 LOGGER.trace("Signal has been processed. Stop waiting.");
             }
-        } finally {
+        }
+        finally {
             lock.unlock();
         }
     }
@@ -128,7 +129,8 @@ public class DatabaseSignalChannel implements SignalChannelReader {
         try {
             LOGGER.trace("Stop action finished.");
             stopProcessed.signal();
-        } finally {
+        }
+        finally {
             lock.unlock();
         }
     }

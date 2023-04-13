@@ -75,7 +75,7 @@ public class SignalProcessorTest {
 
         signalProcess = new SignalProcessor<>(SourceConnector.class,
                 baseConfig(),
-                null,
+                Map.of(Log.NAME, new Log<>()),
                 List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
@@ -109,7 +109,7 @@ public class SignalProcessorTest {
 
         signalProcess = new SignalProcessor<>(SourceConnector.class,
                 baseConfig(Map.of(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS.name(), "generic1")),
-                null,
+                Map.of(Log.NAME, new Log<>()),
                 List.of(genericChannel1, genericChannel2), documentReader, initialOffset);
 
         signalProcess.start();
@@ -135,7 +135,7 @@ public class SignalProcessorTest {
 
         final LogInterceptor log = new LogInterceptor(SignalProcessor.class);
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of(), List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
 
@@ -158,7 +158,7 @@ public class SignalProcessorTest {
 
         final LogInterceptor log = new LogInterceptor(SignalProcessor.class);
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of(Log.NAME, new Log<>()), List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.start();
 
@@ -184,7 +184,7 @@ public class SignalProcessorTest {
             return true;
         };
 
-        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), null, List.of(genericChannel), documentReader, initialOffset);
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of(), List.of(genericChannel), documentReader, initialOffset);
 
         signalProcess.registerSignalAction("custom", testAction);
 

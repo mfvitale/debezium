@@ -6,15 +6,12 @@
 package io.debezium.pipeline;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
@@ -24,12 +21,10 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.signal.SignalProcessor;
-import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -70,7 +65,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
     private final SignalProcessor<P, O> signalProcessor;
-    private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     private volatile boolean running;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
@@ -83,7 +77,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
-                                        DatabaseSchema<?> schema) {
+                                        DatabaseSchema<?> schema,
+                                        SignalProcessor<P, O> signalProcessor) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -91,9 +86,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
-        List<SignalChannelReader> signalChannelReaders = availableSignalChannels.stream().map(ServiceLoader.Provider::get).collect(Collectors.toList());
-        this.signalProcessor = new SignalProcessor<>(connectorType, connectorConfig, eventDispatcher, signalChannelReaders, DocumentReader.defaultReader(),
-                previousOffsets);
+        this.signalProcessor = signalProcessor;
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,

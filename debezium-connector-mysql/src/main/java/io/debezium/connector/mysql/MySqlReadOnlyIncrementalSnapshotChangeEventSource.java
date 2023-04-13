@@ -80,9 +80,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     private final String showMasterStmt = "SHOW MASTER STATUS";
     private final KafkaSignalChannel kafkaSignal;
 
-    private MySqlPartition partition;
-    private OffsetContext offsetContext;
-
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
                                                              EventDispatcher<MySqlPartition, T> dispatcher,
