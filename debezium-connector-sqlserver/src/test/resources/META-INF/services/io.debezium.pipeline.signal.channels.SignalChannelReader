@@ -1,0 +1,2 @@
+io.debezium.pipeline.signal.channels.DatabaseSignalChannel
+io.debezium.pipeline.signal.channels.KafkaSignalChannel
