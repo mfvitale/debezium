@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -24,7 +25,9 @@ import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
@@ -80,7 +83,14 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     @Override
     public void init(OracleOffsetContext offsetContext) throws InterruptedException {
-        StreamingChangeEventSource.super.init(offsetContext);
+        this.effectiveOffset = offsetContext == null ? emptyContext() : offsetContext;
+    }
+
+    private OracleOffsetContext emptyContext() {
+        return OracleOffsetContext.create().logicalName(connectorConfig)
+                .snapshotPendingTransactions(Collections.emptyMap())
+                .transactionContext(new TransactionContext())
+                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
 
     @Override

@@ -115,7 +115,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     @Override
     public void init(SqlServerOffsetContext offsetContext) throws InterruptedException {
-        StreamingChangeEventSource.super.init(offsetContext);
+        this.effectiveOffset = offsetContext == null ? new SqlServerOffsetContext(connectorConfig, TxLogPosition.NULL, false, false) : offsetContext;
     }
 
     @Override

@@ -64,7 +64,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ExecutorService executor;
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
-    private final SignalProcessor<P, O> signalProcessor;
+    protected final SignalProcessor<P, O> signalProcessor;
 
     private volatile boolean running;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
@@ -141,6 +141,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
+
+        signalProcessor.setContext(snapshotResult.getOffset());
 
         LOGGER.debug("Snapshot result {}", snapshotResult);
 

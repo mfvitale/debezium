@@ -8,6 +8,7 @@ package io.debezium.pipeline.signal;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     }
 
     public void setContext(O offset) {
-        previousOffsets = Offsets.of(previousOffsets.getTheOnlyPartition(), offset);
+        previousOffsets = Offsets.of(Collections.singletonMap(previousOffsets.getTheOnlyPartition(), offset));
     }
 
     public void start() {

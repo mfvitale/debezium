@@ -45,7 +45,9 @@ import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -113,7 +115,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     @Override
     public void init(OracleOffsetContext offsetContext) throws InterruptedException {
-        StreamingChangeEventSource.super.init(offsetContext);
+        this.effectiveOffset = offsetContext == null ? emptyContext() : offsetContext;
+    }
+
+    private OracleOffsetContext emptyContext() {
+        return OracleOffsetContext.create().logicalName(connectorConfig)
+                .snapshotPendingTransactions(Collections.emptyMap())
+                .transactionContext(new TransactionContext())
+                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
 
     /**

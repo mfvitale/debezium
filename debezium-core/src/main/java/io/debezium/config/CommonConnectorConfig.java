@@ -625,7 +625,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(30_000L)
+            .withDefault(5L)
             .withValidation(Field::isPositiveInteger)
             .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 30 seconds (30,000 ms).");
 
