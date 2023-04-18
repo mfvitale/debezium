@@ -24,8 +24,8 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
@@ -61,8 +61,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final DataChangeEventListener<MongoDbPartition> dataListener;
     private long totalRowsScanned = 0;
     private final ReplicaSets replicaSets;
-    private final ConnectionContext connectionContext;
-    private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
 
     private MongoDbCollectionSchema currentCollection;
@@ -72,10 +70,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     private MongoDbConnection mongo;
 
-    private CollectionId signallingCollectionId;
+    private final CollectionId signallingCollectionId;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
-                                                       MongoDbTaskContext taskContext,
                                                        MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
@@ -84,9 +81,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                                        DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
         this.connectorConfig = config;
         this.replicaSets = replicaSets;
-        this.taskContext = taskContext;
         this.connections = connections;
-        this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.collectionSchema = collectionSchema;
         this.clock = clock;
@@ -103,7 +98,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (!context.closeWindow(id)) {
             return;
         }
-        sendWindowEvents(partition, offsetContext);
+        sendWindowEvents(offsetContext);
         readChunk(partition);
     }
 
@@ -132,24 +127,36 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         return dataCollectionId;
     }
 
-    protected void sendWindowEvents(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void sendWindowEvents(OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
-            sendEvent(partition, dispatcher, offsetContext, row);
+            sendEvent(dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
     }
 
     // TODO Used typed dispatcher and offset context
-    protected void sendEvent(MongoDbPartition partition, EventDispatcher<MongoDbPartition, CollectionId> dispatcher, OffsetContext offsetContext, Object[] row)
+    protected void sendEvent(EventDispatcher<MongoDbPartition, CollectionId> dispatcher, OffsetContext offsetContext, Object[] row)
             throws InterruptedException {
         context.sendEvent(keyFromRow(row));
-        ((ReplicaSetOffsetContext) offsetContext).readEvent(context.currentDataCollectionId().getId(), clock.currentTimeAsInstant());
-        dispatcher.dispatchSnapshotEvent(partition, context.currentDataCollectionId().getId(),
-                getChangeRecordEmitter(partition, offsetContext, row),
+
+        MongoDbOffsetContext mongoDbOffsetContext = getMongoDbOffsetContext(offsetContext);
+        ReplicaSet replicaSet = replicaSets.all().get(0); // Only RS or Sharded cluster is supported
+        ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(replicaSet);
+        ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(replicaSet);
+
+        replicaSetOffsetContext.readEvent(context.currentDataCollectionId().getId(), clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent(
+                replicaSetPartition, context.currentDataCollectionId().getId(),
+                getChangeRecordEmitter(
+                        replicaSetPartition, replicaSetOffsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
+    }
+
+    private static MongoDbOffsetContext getMongoDbOffsetContext(OffsetContext offsetContext) {
+        return (MongoDbOffsetContext) offsetContext;
     }
 
     /**

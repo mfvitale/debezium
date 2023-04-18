@@ -137,8 +137,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
                                   MongoDbOffsetContext offsetContext) {
-        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
-        final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
+        final ReplicaSetPartition rsPartition = effectiveOffset.getReplicaSetPartition(replicaSet);
+        final ReplicaSetOffsetContext rsOffsetContext = effectiveOffset.getReplicaSetOffsetContext(replicaSet);
 
         LOGGER.info("Reading change stream for '{}'", replicaSet);
 
