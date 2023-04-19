@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.signal.SignalRecord;
-import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.
@@ -95,43 +94,11 @@ public class DatabaseSignalChannel implements SignalChannelReader {
 
             SIGNALS.add(signalRecord);
 
-            if (StopSnapshot.NAME.equals(signalRecord.getType())) {
-                LOGGER.trace("Stop action - going to wait it processing");
-                waitProcessing(signalRecord);
-            }
             return true;
-
         }
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
             return false;
-        }
-    }
-
-    // Close action must be executed synchronous to avoid wrong offset saving
-    private static void waitProcessing(SignalRecord signalRecord) throws InterruptedException {
-
-        lock.lock();
-        try {
-            while (SIGNALS.contains(signalRecord)) {
-                LOGGER.trace("Waiting processing of signal {}", signalRecord);
-                stopProcessed.await();
-                LOGGER.trace("Signal has been processed. Stop waiting.");
-            }
-        }
-        finally {
-            lock.unlock();
-        }
-    }
-
-    public void stopFinished() {
-        lock.lock();
-        try {
-            LOGGER.trace("Stop action finished.");
-            stopProcessed.signal();
-        }
-        finally {
-            lock.unlock();
         }
     }
 }

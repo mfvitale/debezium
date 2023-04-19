@@ -100,6 +100,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
      */
     private final StreamingChangeRecordReceiver streamingReceiver;
 
+    private final SignalProcessor<P, ?> signalProcessor;
+
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
@@ -114,6 +116,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
                 heartbeat, schemaNameAdjuster, signalProcessor);
+    }
+
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
@@ -137,8 +146,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
-        this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
-        this.databaseSignalChannel.init(connectorConfig);
+        this.signalProcessor = signalProcessor;
+        if (signalProcessor != null) {
+            this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
+            this.databaseSignalChannel.init(connectorConfig);
+        }
+        else {
+            this.databaseSignalChannel = null;
+        }
         this.heartbeat = heartbeat;
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
@@ -165,8 +180,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
         this.transactionMonitor = transactionMonitor;
-        this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
-        this.databaseSignalChannel.init(connectorConfig);
+        this.signalProcessor = signalProcessor;
+        if (signalProcessor != null) {
+            this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
+            this.databaseSignalChannel.init(connectorConfig);
+        }
+        else {
+            this.databaseSignalChannel = null;
+        }
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
@@ -267,8 +288,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
-                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId)) {
+                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && databaseSignalChannel != null) {
                             databaseSignalChannel.process(value);
+                        }
+
+                        if (signalProcessor != null) {
+                            // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
+                            // in this way the offset context updated by signaling will be correctly saved
+                            signalProcessor.process();
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {

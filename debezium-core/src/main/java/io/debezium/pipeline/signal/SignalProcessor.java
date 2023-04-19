@@ -24,7 +24,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.actions.SignalAction;
-import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -81,10 +80,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         return reader -> connectorConfig.getEnabledChannels().contains(reader.name());
     }
 
-    private boolean isEnabled(String channelName) {
-        return connectorConfig.getEnabledChannels().contains(channelName);
-    }
-
     public void setContext(O offset) {
         previousOffsets = Offsets.of(Collections.singletonMap(previousOffsets.getTheOnlyPartition(), offset));
     }
@@ -123,7 +118,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         signalActions.put(id, signal);
     }
 
-    private void process() {
+    public synchronized void process() {
 
         LOGGER.trace("SignalProcessor processing");
         signalChannelReaders.parallelStream()
@@ -148,10 +143,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
             action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
                     previousOffsets.getTheOnlyOffset(), signalRecord.getChannelOffset()));
-
-            if (StopSnapshot.NAME.equals(signalRecord.getType()) && isEnabled(DatabaseSignalChannel.CHANNEL_NAME)) {
-                getDatabaseSignalChannel().stopFinished();
-            }
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);

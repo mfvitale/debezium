@@ -81,7 +81,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
 
             if (snapshotResult.isCompletedOrSkipped()) {
                 streamingOffsets.getOffsets().put(partition, snapshotResult.getOffset());
-                signalProcessor.setContext(snapshotResult.getOffset());
+                if (previousOffsets.getOffsets().size() == 1) {
+                    signalProcessor.setContext(snapshotResult.getOffset());
+                }
             }
         }
 
