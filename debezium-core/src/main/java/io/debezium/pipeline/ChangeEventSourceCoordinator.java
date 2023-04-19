@@ -141,7 +141,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
-    public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) { //Signal processing only work with one partition
+    public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) { // Signal processing only work with one partition
         return previousOffset.getOffsets().size() == 1 ? Optional.ofNullable(signalProcessor) : Optional.empty();
     }
 
@@ -202,7 +202,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init(offsetContext);
-        if(offsetContext.getOffset().size() == 1) {
+        if (offsetContext.getOffset().size() == 1) {
             getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));
         }
 
