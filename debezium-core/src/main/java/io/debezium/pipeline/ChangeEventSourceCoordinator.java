@@ -142,7 +142,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) { // Signal processing only work with one partition
-        return previousOffset.getOffsets().size() == 1 ? Optional.ofNullable(signalProcessor) : Optional.empty();
+        return previousOffset == null || previousOffset.getOffsets().size() == 1 ? Optional.ofNullable(signalProcessor) : Optional.empty();
     }
 
     protected void executeChangeEventSources(CdcSourceTaskContext taskContext, SnapshotChangeEventSource<P, O> snapshotSource, Offsets<P, O> previousOffsets,
@@ -202,9 +202,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init(offsetContext);
-        if (offsetContext.getOffset().size() == 1) {
-            getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));
-        }
+        getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));
 
         final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);
