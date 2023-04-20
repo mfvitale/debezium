@@ -70,5 +70,7 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
     default void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
     }
 
-    O getOffsetContext();
+    default O getOffsetContext() {
+        return null;
+    }
 }
