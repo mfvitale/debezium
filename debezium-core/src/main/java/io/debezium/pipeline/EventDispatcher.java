@@ -298,12 +298,12 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                             throws InterruptedException {
                         if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && databaseSignalChannel != null) {
                             databaseSignalChannel.process(value);
-                        }
 
-                        if (signalProcessor != null) {
-                            // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
-                            // in this way the offset context updated by signaling will be correctly saved
-                            signalProcessor.process();
+                            if (signalProcessor != null) {
+                                // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
+                                // in this way the offset context updated by signaling will be correctly saved
+                                signalProcessor.process();
+                            }
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {
