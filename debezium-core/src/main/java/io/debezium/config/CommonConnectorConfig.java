@@ -610,7 +610,6 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("The maximum number of threads used to perform the snapshot. Defaults to 1.");
 
-    // TODO this should be declared in DatabaseSignalChannelReader
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 20))
