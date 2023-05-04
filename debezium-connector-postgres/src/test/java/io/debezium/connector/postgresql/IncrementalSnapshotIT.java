@@ -16,10 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import io.debezium.kafka.KafkaCluster;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
-import io.debezium.util.Collect;
-import io.debezium.util.Testing;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Assert;
@@ -34,8 +30,12 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Collect;
+import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
