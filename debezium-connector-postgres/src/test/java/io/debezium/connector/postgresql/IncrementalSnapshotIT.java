@@ -18,6 +18,7 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -56,8 +57,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
-
-        kafka.createTopic(getSignalsTopic(), 1, 1);
     }
 
     @BeforeClass
@@ -72,6 +71,15 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                         "auto.create.topics.enable", "false",
                         "zookeeper.session.timeout.ms", "20000"))
                 .startup();
+
+        kafka.createTopic("signals_topic", 1, 1);
+    }
+
+    @AfterClass
+    public static void stopKafka() {
+        if (kafka != null) {
+            kafka.shutdown();
+        }
     }
 
     @After
@@ -79,6 +87,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
+
     }
 
     protected Configuration.Builder config() {
