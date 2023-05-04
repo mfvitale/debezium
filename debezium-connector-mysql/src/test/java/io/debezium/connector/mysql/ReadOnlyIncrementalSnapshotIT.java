@@ -94,7 +94,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
     }
 
-    private String getSignalsTopic() {
+    protected String getSignalsTopic() {
         return DATABASE.getDatabaseName() + "signals_topic";
     }
 
