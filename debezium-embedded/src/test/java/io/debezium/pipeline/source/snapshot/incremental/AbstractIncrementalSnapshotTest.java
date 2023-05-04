@@ -27,7 +27,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import io.debezium.kafka.KafkaCluster;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -49,6 +48,7 @@ import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
 
