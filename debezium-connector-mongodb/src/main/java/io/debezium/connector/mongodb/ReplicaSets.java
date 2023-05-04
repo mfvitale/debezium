@@ -102,6 +102,7 @@ public class ReplicaSets {
     public ReplicaSet getIncrementalSnapshotReplicaSet() {
         return all().get(0);
     }
+
     /**
      * Determine if one or more replica sets has been added or removed since the prior state.
      *

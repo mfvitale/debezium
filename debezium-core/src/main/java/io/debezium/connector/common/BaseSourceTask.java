@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -57,14 +56,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
 
-
-
     public enum State {
         RESTARTING,
         RUNNING,
         INITIAL,
         STOPPED;
     }
+
     private final AtomicReference<State> state = new AtomicReference<>(State.INITIAL);
 
     /**

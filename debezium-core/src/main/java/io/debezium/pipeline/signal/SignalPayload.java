@@ -5,11 +5,11 @@
  */
 package io.debezium.pipeline.signal;
 
+import java.util.Map;
+
 import io.debezium.document.Document;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-
-import java.util.Map;
 
 public class SignalPayload<P extends Partition> {
 

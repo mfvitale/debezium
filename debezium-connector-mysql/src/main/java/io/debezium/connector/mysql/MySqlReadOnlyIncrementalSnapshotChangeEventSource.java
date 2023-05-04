@@ -229,7 +229,8 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
+    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData,
+                                                 List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         super.addDataCollectionNamesToSnapshot(partition, offsetContext, additionalData, dataCollectionIds, additionalCondition, surrogateKey);
