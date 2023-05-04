@@ -18,19 +18,19 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
-import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
+import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 
 /**
  * @author Jiri Pechanec
  *
  */
-public class DatabaseSignalChannelTest {
+public class SourceSignalChannelTest {
 
     @Test
     public void shouldExecuteFromEnvelope() throws Exception {
 
-        final DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
-        databaseSignalChannel.init(config());
+        final SourceSignalChannel sourceSignalChannel = new SourceSignalChannel();
+        sourceSignalChannel.init(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("col2", Schema.OPTIONAL_STRING_SCHEMA)
@@ -46,8 +46,8 @@ public class DatabaseSignalChannelTest {
         record.put("col2", "custom");
         record.put("col3", "{\"v\": 5}");
 
-        databaseSignalChannel.process(env.create(record, null, null));
-        List<SignalRecord> signalRecords = databaseSignalChannel.read();
+        sourceSignalChannel.process(env.create(record, null, null));
+        List<SignalRecord> signalRecords = sourceSignalChannel.read();
         assertThat(signalRecords).hasSize(1);
         assertThat(signalRecords.get(0).getData()).isEqualTo("{\"v\": 5}");
     }
@@ -55,8 +55,8 @@ public class DatabaseSignalChannelTest {
     @Test
     public void shouldIgnoreInvalidEnvelope() throws Exception {
 
-        final DatabaseSignalChannel databaseSignalChannel = new DatabaseSignalChannel();
-        databaseSignalChannel.init(config());
+        final SourceSignalChannel sourceSignalChannel = new SourceSignalChannel();
+        sourceSignalChannel.init(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("col2", Schema.OPTIONAL_STRING_SCHEMA)
@@ -70,11 +70,11 @@ public class DatabaseSignalChannelTest {
         record.put("col1", "log1");
         record.put("col2", "custom");
 
-        databaseSignalChannel.process(env.create(record, null, null));
-        assertThat(databaseSignalChannel.read()).hasSize(0);
+        sourceSignalChannel.process(env.create(record, null, null));
+        assertThat(sourceSignalChannel.read()).hasSize(0);
 
-        databaseSignalChannel.process(record);
-        assertThat(databaseSignalChannel.read()).hasSize(0);
+        sourceSignalChannel.process(record);
+        assertThat(sourceSignalChannel.read()).hasSize(0);
     }
 
     protected CommonConnectorConfig config() {

@@ -37,7 +37,7 @@ import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotW
 import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
-import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
+import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -92,7 +92,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final ConnectTableChangeSerializer tableChangesSerializer;
-    private final DatabaseSignalChannel databaseSignalChannel;
+    private final SourceSignalChannel sourceSignalChannel;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
     /**
@@ -156,11 +156,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
-            this.databaseSignalChannel.init(connectorConfig);
+            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel.init(connectorConfig);
         }
         else {
-            this.databaseSignalChannel = null;
+            this.sourceSignalChannel = null;
         }
         this.heartbeat = heartbeat;
 
@@ -190,11 +190,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = transactionMonitor;
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.databaseSignalChannel = signalProcessor.getDatabaseSignalChannel();
-            this.databaseSignalChannel.init(connectorConfig);
+            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel.init(connectorConfig);
         }
         else {
-            this.databaseSignalChannel = null;
+            this.sourceSignalChannel = null;
         }
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
@@ -296,8 +296,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
-                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && databaseSignalChannel != null) {
-                            databaseSignalChannel.process(value);
+                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && sourceSignalChannel != null) {
+                            sourceSignalChannel.process(value);
 
                             if (signalProcessor != null) {
                                 // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event

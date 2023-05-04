@@ -36,13 +36,11 @@ import io.debezium.pipeline.signal.SignalRecord;
  *
  */
 @NotThreadSafe
-public class DatabaseSignalChannel implements SignalChannelReader {
+public class SourceSignalChannel implements SignalChannelReader {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseSignalChannel.class);
-    public static final String CHANNEL_NAME = "database";
+    private static final Logger LOGGER = LoggerFactory.getLogger(SourceSignalChannel.class);
+    public static final String CHANNEL_NAME = "source";
     public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
-    private static final Lock lock = new ReentrantLock();
-    private static final Condition stopProcessed = lock.newCondition();
 
     public CommonConnectorConfig connectorConfig;
 

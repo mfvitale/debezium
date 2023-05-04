@@ -24,7 +24,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.actions.SignalAction;
-import io.debezium.pipeline.signal.channels.DatabaseSignalChannel;
+import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -156,9 +156,9 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
-    public DatabaseSignalChannel getDatabaseSignalChannel() {
-        return (DatabaseSignalChannel) signalChannelReaders.stream()
-                .filter(channel -> channel.name().equals(DatabaseSignalChannel.CHANNEL_NAME))
+    public SourceSignalChannel getSourceSignalChannel() {
+        return (SourceSignalChannel) signalChannelReaders.stream()
+                .filter(channel -> channel.name().equals(SourceSignalChannel.CHANNEL_NAME))
                 .findFirst().get();
     }
 }

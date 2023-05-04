@@ -204,7 +204,7 @@ public class SignalProcessorTest {
                 .with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "core")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 100)
-                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "database,generic");
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,generic");
 
         additionalConfig.forEach(confBuilder::with);
         return new CommonConnectorConfig(confBuilder.build(), 0) {

@@ -634,8 +634,8 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDefault("database")
-            .withDescription("List of channels names that is enabled. Database channel is enabled by default");
+            .withDefault("source")
+            .withDescription("List of channels names that are enabled. Source channel is enabled by default");
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
