@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.signal;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -26,20 +27,20 @@ public class SignalRecord {
     private final String id;
     private final String type;
     private final String data;
-    private final Long channelOffset;
+    private final Map<String, Object> additionalData;
 
-    public SignalRecord(String id, String type, String data, Long channelOffset) {
+    public SignalRecord(String id, String type, String data, Long channelOffset, Map<String, Object> additionalData) {
         this.id = id;
         this.type = type;
         this.data = data;
-        this.channelOffset = channelOffset;
+        this.additionalData = additionalData;
     }
 
     public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {
 
         final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
 
-        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], null));
+        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], null, Map.of()));
     }
 
     public String getId() {
@@ -54,8 +55,12 @@ public class SignalRecord {
         return data;
     }
 
-    public Long getChannelOffset() {
-        return channelOffset;
+    public <T> T getAdditionalDataProperty(String property, Class<T> type) {
+        return type.cast(additionalData.get(property));
+    }
+
+    public Map<String, Object> getAdditionalData() {
+        return additionalData;
     }
 
     @Override
@@ -64,7 +69,7 @@ public class SignalRecord {
                 "id='" + id + '\'' +
                 ", type='" + type + '\'' +
                 ", data='" + data + '\'' +
-                ", channelOffset=" + channelOffset +
+                ", additionalData=" + additionalData +
                 '}';
     }
 

@@ -142,7 +142,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                     : documentReader.read(signalRecord.getData());
 
             action.arrived(new SignalPayload<>(previousOffsets.getTheOnlyPartition(), signalRecord.getId(), signalRecord.getType(), jsonData,
-                    previousOffsets.getTheOnlyOffset(), signalRecord.getChannelOffset()));
+                    previousOffsets.getTheOnlyOffset(), signalRecord.getAdditionalData()));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", signalRecord.getId(), signalRecord.getData(), e);

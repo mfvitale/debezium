@@ -462,7 +462,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+    public void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
@@ -484,7 +484,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(P partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
+    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         LOGGER.trace("Stopping incremental snapshot with context {}", context);
         if (context.snapshotRunning()) {

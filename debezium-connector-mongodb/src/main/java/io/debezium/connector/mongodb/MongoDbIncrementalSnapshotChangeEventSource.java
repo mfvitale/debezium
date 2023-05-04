@@ -343,7 +343,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+    public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         if (additionalCondition != null && additionalCondition.isPresent()) {
@@ -372,7 +372,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
+    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {

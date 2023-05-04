@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -88,7 +89,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              SnapshotProgressListener<MySqlPartition> progressListener,
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
-        kafkaSignal = new KafkaSignalChannel(); // TODO Maybe load with ServiceLoader
+        kafkaSignal = new KafkaSignalChannel();
     }
 
     @Override
@@ -228,19 +229,19 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds,
+    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
-        super.addDataCollectionNamesToSnapshot(partition, offsetContext, channelOffset, dataCollectionIds, additionalCondition, surrogateKey);
+        super.addDataCollectionNamesToSnapshot(partition, offsetContext, additionalData, dataCollectionIds, additionalCondition, surrogateKey);
 
-        getContext().setSignalOffset(channelOffset);
+        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
     @Override
-    public void stopSnapshot(MySqlPartition partition, OffsetContext offsetContext, Long channelOffset, List<String> dataCollectionIds) {
+    public void stopSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         {
-            super.stopSnapshot(partition, offsetContext, channelOffset, dataCollectionIds);
-            getContext().setSignalOffset(channelOffset);
+            super.stopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
+            getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
         }
     }
 
