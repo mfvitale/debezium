@@ -91,7 +91,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                                                                                                                                 MongoDbOffsetContext offsetContext,
                                                                                                                                                 SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
                                                                                                                                                 DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
-        if (replicaSets.size() > 1) { // Only ReplicaSet deployments and Sharded Cluster with connection.mode=sharded are supported by incremental snapshot
+        if (replicaSets.size() > 1) {
+            LOGGER.info("Only ReplicaSet deployments and Sharded Cluster with connection.mode=sharded are supported by incremental snapshot");
             return Optional.empty();
         }
 
