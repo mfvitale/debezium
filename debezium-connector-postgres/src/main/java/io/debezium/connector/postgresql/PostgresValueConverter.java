@@ -376,7 +376,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private SchemaBuilder numericSchema(Column column) {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
-            return VariableScaleDecimal.builder();
+            return VariableScaleDecimal.builder(column.length(), column.scale().orElse(null));
         }
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(0));
     }

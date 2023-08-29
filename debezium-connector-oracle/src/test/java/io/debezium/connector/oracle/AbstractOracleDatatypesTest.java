@@ -151,19 +151,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
-            new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("3.33"))),
-            new SchemaAndValueField("VAL_F_10", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("8.888"))),
+            new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder(126).optional().build(),
+                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder(126).optional().build(), new BigDecimal("3.33"))),
+            new SchemaAndValueField("VAL_F_10", VariableScaleDecimal.builder(10).optional().build(),
+                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder(10).optional().build(), new BigDecimal("8.888"))),
             new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.444400")),
-            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("5.555"))),
-            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("6.66"))),
+            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder(126).optional().build(),
+                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder(126).optional().build(), new BigDecimal("5.555"))),
+            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder(63).optional().build(),
+                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder(63).optional().build(), new BigDecimal("6.66"))),
             new SchemaAndValueField("VAL_DECIMAL", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
             new SchemaAndValueField("VAL_NUMERIC", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
-            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("77.323"))));
+            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder(0).optional().build(),
+                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder(0).optional().build(), new BigDecimal("77.323"))));
 
     private static final List<SchemaAndValueField> EXPECTED_FP_AS_STRING = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
@@ -374,13 +374,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         Testing.debug("Inserted");
         expectedRecordCount++;
 
-        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount, false);
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_FP");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
         SourceRecord record = testTableRecords.get(0);
 
-        VerifyRecord.isValid(record);
+        VerifyRecord.isValid(record, true);
 
         // insert
         if (insertRecordsDuringTest()) {

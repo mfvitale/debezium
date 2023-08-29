@@ -200,7 +200,11 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private SchemaBuilder variableScaleSchema(Column column) {
         if (decimalMode == DecimalMode.PRECISE) {
-            return VariableScaleDecimal.builder();
+            if (column.scale().isPresent()) {
+                return VariableScaleDecimal.builder(column.length(), column.scale().get());
+            }
+
+            return VariableScaleDecimal.builder(column.length());
         }
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(-1));
     }

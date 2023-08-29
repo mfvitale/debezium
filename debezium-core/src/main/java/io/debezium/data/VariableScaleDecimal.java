@@ -40,6 +40,40 @@ public class VariableScaleDecimal {
     }
 
     /**
+     * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
+     * to set additional schema settings such as required/optional, default value, and documentation.
+     *
+     * @return the schema builder
+     */
+    public static SchemaBuilder builder(Integer precision, Integer scale) {
+
+        SchemaBuilder schemaBuilder = SchemaFactory.get().datatypeVariableScaleDecimalSchema();
+        if (precision != -1) {
+            schemaBuilder.parameter("precision", Integer.toString(precision));
+        }
+
+        schemaBuilder.parameter("scale", Integer.toString(scale));
+
+        return schemaBuilder;
+    }
+
+    /**
+     * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
+     * to set additional schema settings such as required/optional, default value, and documentation.
+     *
+     * @return the schema builder
+     */
+    public static SchemaBuilder builder(Integer precision) {
+
+        SchemaBuilder schemaBuilder = SchemaFactory.get().datatypeVariableScaleDecimalSchema();
+        if (precision != -1) {
+            schemaBuilder.parameter("precision", Integer.toString(precision));
+        }
+
+        return schemaBuilder;
+    }
+
+    /**
      * Returns a Schema for a VariableScaleDecimal but with all other default Schema settings.
      *
      * @return the schema
@@ -86,7 +120,7 @@ public class VariableScaleDecimal {
 
         Struct result = new Struct(schema);
         result.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
-        result.put(SCALE_FIELD, decimalValue.scale());
+        result.put(SCALE_FIELD, decimalValue.scale()); // TODO why we don't have the precision?
 
         return result;
     }
