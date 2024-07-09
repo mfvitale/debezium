@@ -29,7 +29,7 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentelemetry>1.23.0</version.opentelemetry>
+        <version.opentelemetry>1.39.0</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -311,6 +311,11 @@
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-api</artifactId>
+                <version>${version.opentelemetry}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk</artifactId>
                 <version>${version.opentelemetry}</version>
             </dependency>
 
