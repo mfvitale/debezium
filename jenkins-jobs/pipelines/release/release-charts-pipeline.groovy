@@ -1,0 +1,194 @@
+import groovy.json.*
+import java.util.stream.*
+
+import com.cloudbees.groovy.cps.NonCPS
+
+
+if (
+    !RELEASE_VERSION
+) {
+    error 'Input parameters not provided'
+}
+
+GIT_CREDENTIALS_ID = 'debezium-github'
+HOME_DIR = '/home/cloud-user'
+GPG_DIR = 'gpg'
+
+RELEASE_SEM_VERSION=RELEASE_VERSION.replaceAll(/\.(?=[^.]*$)/, '-')
+
+MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
+OCI_ARTIFACT_REPO_URL='oci://quay.io/mvitale'
+
+DEBEZIUM_OPERATOR_BRANCH='main'
+DEBEZIUM_OPERATOR_REPOSITORY='github.com/mfvitale/debezium-operator'
+
+DEBEZIUM_PLATFORM_BRANCH='main'
+DEBEZIUM_PLATFORM_REPOSITORY='github.com/mfvitale/debezium-platform'
+
+DEBEZIUM_OPERATOR_DIR='operator'
+DEBEZIUM_PLATFORM_DIR='platform'
+
+
+def modifyFile(filename, modClosure) {
+    echo "========================================================================"
+    echo "Modifying file $filename"
+    echo "========================================================================"
+    def originalFile = readFile(filename)
+    echo "Content to be modified:\n$originalFile"
+    echo "========================================================================"
+    def updatedFile = modClosure.call(originalFile)
+    echo "Content after modification:\n$updatedFile"
+    echo "========================================================================"
+    writeFile(
+        file: filename,
+        text: updatedFile
+    )
+}
+
+node('release-node') {
+    catchError {
+        stage('Validate parameters') {
+            if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
+                error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
+            }
+        }
+
+        stage('Initialize') {
+            dir('.') {
+                deleteDir()
+                sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
+                sh "ssh-keyscan github.com >> $HOME_DIR/.ssh/known_hosts"
+            }
+            dir(GPG_DIR) {
+                withCredentials([
+                        string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
+                        [$class: 'FileBinding', credentialsId: 'debezium-ci-secret-key', variable: 'SECRET_KEY_FILE']]) {
+                    echo 'Creating GPG directory'
+                    def gpglog = sh(script: "gpg --import --batch --passphrase $PASSPHRASE --homedir . $SECRET_KEY_FILE", returnStdout: true).trim()
+                    echo gpglog
+                }
+            }
+            checkout([$class                           : 'GitSCM',
+                      branches                         : [[name: "*/$DEBEZIUM_OPERATOR_BRANCH"]],
+                      doGenerateSubmoduleConfigurations: false,
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_OPERATOR_DIR]],
+                      submoduleCfg                     : [],
+                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_OPERATOR_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+            )
+
+            checkout([$class                           : 'GitSCM',
+                      branches                         : [[name: "*/$DEBEZIUM_PLATFORM_BRANCH"]],
+                      doGenerateSubmoduleConfigurations: false,
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_PLATFORM_DIR]],
+                      submoduleCfg                     : [],
+                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_PLATFORM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+            )
+        }
+
+        stage("Install helm") {
+            sh 'curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3'
+            sh 'chmod 700 get_helm.sh'
+            sh './get_helm.sh'
+            sh 'helm version'
+        }
+
+        stage("Install GitHub CLI") {
+            sh 'curl -fLjsO https://github.com/cli/cli/releases/download/v2.67.0/gh_2.67.0_linux_amd64.tar.gz'
+            sh 'tar -xvzf gh_2.67.0_linux_amd64.tar.gz --one-top-level=gh-cli --strip-components=1'
+            sh 'sudo mv gh-cli/bin/gh /usr/local/bin'
+            sh 'gh --version'
+        }
+
+        def TMP_WORKDIR = sh(script: 'mktemp -d', returnStdout: true).trim()
+        stage('Release operator chart') {
+            echo "=== Downloading Debezium operator chart ==="
+            def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
+
+            dir(TMP_WORKDIR) {
+                sh(
+                        label: 'Download and verify helm chart',
+                        script: """
+                            echo "Input url: $INPUT_URL"
+                            curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
+                    """)
+
+                sh(     label: 'Unzip and repackage',
+                        script: """
+                      tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
+                      helm package debezium-operator-${RELEASE_SEM_VERSION}
+                 """)
+
+                stage('Create a GH release') {
+                     dir(DEBEZIUM_OPERATOR_DIR) {
+                         {
+                             sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest 'debezium-operator-${RELEASE_SEM_VERSION}.tgz'"
+
+                     }
+                 }
+
+                stage('Pushing chart to quay.io') {
+                    //sh 'helm registry login -u ${QUAYIO_CREDENTIALS%:*} -p ${QUAYIO_CREDENTIALS#*:} quay.io'
+                    sh 'helm registry login -u mvitale -p  quay.io'
+                    sh "helm push $debezium-operator-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                }
+            }
+
+        }
+
+        stage('Release platform chart') {
+
+            dir(DEBEZIUM_PLATFORM_DIR) {
+                echo "Update version for chart dependency"
+                dir("helm/charts/database") {
+                    modifyFile("Chart.yaml") {
+                        it.replaceFirst(/version: .*/, "version: \"${RELEASE_SEM_VERSION}\"")
+                    }
+                }
+
+                dir("helm") {
+                    def modifyVersions = { content ->
+                        def updatedContent = content
+
+                        // Replace operator version
+                        updatedContent = updatedContent.replaceAll(
+                                /(name: debezium-operator.*?\n\s+version: )".*?"/,
+                                "\$1\"${RELEASE_SEM_VERSION}\""
+                        )
+
+                        // Replace database version
+                        updatedContent = updatedContent.replaceAll(
+                                /(name: database.*?\n\s+version: ).*/,
+                                "\$1\"${RELEASE_SEM_VERSION}\""
+                        )
+
+                        return updatedContent
+                    }
+                    modifyFile("Chart.yaml", modifyVersions)
+                }
+                sh "mv $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz helm/charts"
+                sh "ls helm/charts"
+                sh "helm show chart helm/charts/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
+                sh "helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} helm/"
+                sh "ls"
+            }
+
+            /*stage('Create a GH release') {
+                dir(DEBEZIUM_OPERATOR_DIR) {
+
+                        sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest '$TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tar.gz'"
+
+                }
+            }
+
+            stage('Pushing chart to quay.io') {
+                //sh 'helm registry login -u ${QUAYIO_CREDENTIALS%:*} -p ${QUAYIO_CREDENTIALS#*:} quay.io'
+                sh 'helm registry login -u mvitale -p A1dme8gp2ukOAeW6zqPQ0E7pM95QV+fHCngXS43ZvuoUIO02fWcMz/aoMDYjR2BC quay.io'
+                sh "helm push $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tar.gz $OCI_ARTIFACT_REPO_URL"
+            }*/
+        }
+    }
+
+    mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+}
