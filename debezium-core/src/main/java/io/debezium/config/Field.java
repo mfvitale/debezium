@@ -1310,7 +1310,6 @@ public final class Field {
         if (Arrays.asList(enumType.getInterfaces()).contains(EnumeratedValue.class)) {
             return Arrays.stream(enumType.getEnumConstants())
                     .map(x -> ((EnumeratedValue) x).getValue())
-                    .map(String::toLowerCase)
                     .collect(Collectors.toSet());
         }
         else {
