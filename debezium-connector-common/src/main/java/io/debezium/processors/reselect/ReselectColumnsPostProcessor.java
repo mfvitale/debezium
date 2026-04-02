@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
@@ -36,6 +35,7 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
@@ -58,15 +58,9 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 @Incubating
-public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistryAware, ServiceRegistryAware {
+public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistryAware, ServiceRegistryAware, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
-
-    private static final String RESELECT_COLUMNS_INCLUDE_LIST = "reselect.columns.include.list";
-    private static final String RESELECT_COLUMNS_EXCLUDE_LIST = "reselect.columns.exclude.list";
-    private static final String RESELECT_UNAVAILABLE_VALUES = "reselect.unavailable.values";
-    private static final String RESELECT_NULL_VALUES = "reselect.null.values";
-    private static final String RESELECT_USE_EVENT_KEY = "reselect.use.event.key";
 
     private Predicate<String> selector;
     private boolean reselectUnavailableValues;
@@ -83,17 +77,6 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
     private CustomConverterRegistry customConverterRegistry;
-
-    public static final Field ERROR_HANDLING_MODE = Field.create("reselect.error.handling.mode")
-            .withDisplayName("Error Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
-            .withEnum(ErrorHandlingMode.class, ErrorHandlingMode.WARN)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Specify how to handle error in case of lookup sql failure or empty reselection: "
-                    + "'warn' only log the error; "
-                    + "'fail' fail the connector with an error message.");
-
     private ErrorHandlingMode errorHandlingMode;
 
     public enum ErrorHandlingMode implements EnumeratedValue {
@@ -137,13 +120,13 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     @Override
     public void configure(Map<String, ?> properties) {
         final Configuration config = Configuration.from(properties);
-        this.reselectUnavailableValues = config.getBoolean(RESELECT_UNAVAILABLE_VALUES, true);
-        this.reselectNullValues = config.getBoolean(RESELECT_NULL_VALUES, true);
-        this.reselectUseEventKeyFields = config.getBoolean(RESELECT_USE_EVENT_KEY, false);
-        this.errorHandlingMode = ErrorHandlingMode.parse(config.getString(ERROR_HANDLING_MODE));
+        this.reselectUnavailableValues = config.getBoolean(ReselectColumnsPostProcessorConfig.RESELECT_UNAVAILABLE_VALUES);
+        this.reselectNullValues = config.getBoolean(ReselectColumnsPostProcessorConfig.RESELECT_NULL_VALUES);
+        this.reselectUseEventKeyFields = config.getBoolean(ReselectColumnsPostProcessorConfig.RESELECT_USE_EVENT_KEY);
+        this.errorHandlingMode = ErrorHandlingMode.parse(config.getString(ReselectColumnsPostProcessorConfig.ERROR_HANDLING_MODE));
         this.selector = new ReselectColumnsPredicateBuilder()
-                .includeColumns(config.getString(RESELECT_COLUMNS_INCLUDE_LIST))
-                .excludeColumns(config.getString(RESELECT_COLUMNS_EXCLUDE_LIST))
+                .includeColumns(config.getString(ReselectColumnsPostProcessorConfig.RESELECT_COLUMNS_INCLUDE_LIST))
+                .excludeColumns(config.getString(ReselectColumnsPostProcessorConfig.RESELECT_COLUMNS_EXCLUDE_LIST))
                 .build();
 
         if (!(this.reselectNullValues || this.reselectUnavailableValues)) {
@@ -402,6 +385,17 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         }
 
         return jdbcConnection.createTableId(databaseName, schemaName, tableName);
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(
+                ReselectColumnsPostProcessorConfig.RESELECT_COLUMNS_INCLUDE_LIST,
+                ReselectColumnsPostProcessorConfig.RESELECT_COLUMNS_EXCLUDE_LIST,
+                ReselectColumnsPostProcessorConfig.RESELECT_UNAVAILABLE_VALUES,
+                ReselectColumnsPostProcessorConfig.RESELECT_NULL_VALUES,
+                ReselectColumnsPostProcessorConfig.RESELECT_USE_EVENT_KEY,
+                ReselectColumnsPostProcessorConfig.ERROR_HANDLING_MODE);
     }
 
     private static class ReselectColumnsPredicateBuilder {

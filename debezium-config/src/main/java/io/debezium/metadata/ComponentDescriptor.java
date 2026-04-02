@@ -21,10 +21,11 @@ public class ComponentDescriptor {
     private static final String PREDICATE_TYPE = "predicate";
     private static final String CONVERTER_TYPE = "converter";
     private static final String CUSTOM_CONVERTER_TYPE = "custom-converter";
+    private static final String POST_PROCESSOR_TYPE = "post-processor";
     private static final String UNKNOWN_TYPE = "unknown";
 
     /**
-     * Mapping of Kafka Connect interface names to component type identifiers.
+     * Mapping of Kafka Connect and Debezium interface names to component type identifiers.
      * Checked in order, so more specific types should come first.
      */
     private static final Map<String, String> COMPONENT_TYPE_MAPPINGS = Map.of(
@@ -33,7 +34,8 @@ public class ComponentDescriptor {
             "org.apache.kafka.connect.transforms.Transformation", TRANSFORMATION_TYPE,
             "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE,
             "org.apache.kafka.connect.storage.Converter", CONVERTER_TYPE,
-            "io.debezium.spi.converter.CustomConverter", CUSTOM_CONVERTER_TYPE);
+            "io.debezium.spi.converter.CustomConverter", CUSTOM_CONVERTER_TYPE,
+            "io.debezium.processors.spi.PostProcessor", POST_PROCESSOR_TYPE);
 
     private final String id;
     private final String displayName;
