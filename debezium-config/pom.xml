@@ -13,6 +13,12 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <!-- Debezium API for annotations -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-api</artifactId>
+        </dependency>
+
         <!-- Debezium utilities -->
         <dependency>
             <groupId>io.debezium</groupId>
